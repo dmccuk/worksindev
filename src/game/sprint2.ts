@@ -129,11 +129,16 @@ export const sprint2: Sprint = {
 			],
 			steps: [
 				{
-					text: "Find the short hash of Tom's commit, 'testing discount': the code at the start of its line. Not the first commit: reverting that one undoes the whole shop.",
-					cmd: 'cd ~/darts-shop\ngit log --oneline',
+					text: "List the commits that changed prices.csv. Tom's is 'testing discount': its short hash is the code at the start of the line. Not 'Initial shop': reverting that one undoes the whole shop.",
+					cmd: 'cd ~/darts-shop\ngit log --oneline prices.csv',
 				},
 				{
-					text: "Make a new commit that undoes Tom's. Put his hash in place of HASH. --no-edit keeps Git's own message. If Git says 'Please tell me who you are', run the two git config commands it shows first. If it says CONFLICT, run git revert --abort and check the hash.",
+					text: 'Make sure Git knows who you are, or the revert stops halfway. Use your own name. (If you refreshed the page, the servers were reset, so do this again.)',
+					cmd: 'git config --global user.name "Your Name"\ngit config --global user.email "you@darts.example"',
+					done: async (vms) => /email\s*=/.test((await vms.web01.readFile(`${home(vms)}/.gitconfig`)) ?? ''),
+				},
+				{
+					text: "Make a new commit that undoes Tom's. Put his hash in place of HASH. --no-edit keeps Git's own message. If Git said 'Please tell me who you are' during the revert, the change is already staged: run git commit --no-edit to finish it. If it says CONFLICT, run git revert --abort and check the hash.",
 					cmd: 'git revert --no-edit HASH',
 					done: async (vms) => (await gitLog(vms.web01, 'darts-shop')).some((c) => c.subject.startsWith('Revert')),
 				},
@@ -150,6 +155,12 @@ export const sprint2: Sprint = {
 							message: `A ${what} is half-finished: it stopped on a conflict, and some files may be missing. Run ${what} --abort to go back to your last commit, then try again.`,
 						};
 				}
+				if ((await vms.web01.readFile(`${git}/MERGE_MSG`))?.startsWith('Revert'))
+					return {
+						ok: false,
+						message:
+							"Your revert is staged but not committed: Git stopped to ask who you are. Set your name and email with git config, then run git commit --no-edit to finish it.",
+					};
 				const log = await gitLog(vms.web01, 'darts-shop');
 				const tom = log.findIndex((c) => c.subject === 'testing discount');
 				if (tom < 0)
