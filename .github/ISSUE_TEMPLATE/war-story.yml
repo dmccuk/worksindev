@@ -1,0 +1,58 @@
+name: Submit a ticket from your career
+description: A real incident you lived through that would make a good Works in Dev ticket.
+title: "War story: "
+labels: ["war story"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing. The best stories become tickets in the game, credited to you.
+
+        Please leave out anything that could identify a real company, customer or colleague. Change the names: in the game, it all happened at Darts Unlimited.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: The incident, from the moment it started. The more ridiculous, the better.
+      placeholder: "A cron job meant to run nightly ran every minute and emailed the whole company..."
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: How was it fixed?
+      description: The commands, config changes or decisions that fixed it. This is the skill the player learns.
+    validations:
+      required: true
+  - type: textarea
+    id: lesson
+    attributes:
+      label: What's the lesson?
+      description: What should a junior engineer take away from it?
+    validations:
+      required: true
+  - type: dropdown
+    id: era
+    attributes:
+      label: Roughly when?
+      options:
+        - Before 2010
+        - 2010 to 2015
+        - 2016 to 2020
+        - After 2020
+    validations:
+      required: false
+  - type: input
+    id: credit
+    attributes:
+      label: How should we credit you?
+      description: A name or handle shown in the game. Leave blank to use your GitHub username.
+    validations:
+      required: false
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Terms
+      options:
+        - label: I've removed anything that identifies a real company or person, and I agree to the licence terms in CONTRIBUTING.md.
+          required: true

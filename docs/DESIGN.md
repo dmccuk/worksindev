@@ -53,6 +53,7 @@ Stand-up (Derek, Head of IT): "Welcome aboard. Brant will show you round. He's o
 | DART-104 | Priya | 2 | Who keeps editing /etc/hosts? | Answer found in the sudo log with `grep` |
 | DART-105 | Derek | 1 | URGENT: printer broken (interruption, after 2 done) | Reassigned to facilities |
 | DART-106 | Kev | 5 | Deploy my build, it works in dev | App running in production mode with the right config |
+| DART-108 | Sandra | 2 | Why is web01 emailing everyone? | Brant's "nightly" backup cron job fixed from every minute to `0 2 * * *`, not deleted |
 | DART-107 | Derek | 3 | The website is down on web02 (after 4 done) | Fixed nginx config copied with `scp`, moved into place over `ssh`, nginx restarted; no stray `.conf` backups left in `http.d` |
 
 DART-106 is the first build thrown over the fence. It fails because a config file exists only on Kev's laptop. The retro asks why, which sets up sprint 2.
@@ -135,5 +136,5 @@ Then judge whether it is fun before building sprint 2 and GitBit.
 
 ## Open questions for the owner
 
-- TODO(owner): public or private repository, and licence.
+- Public repository, licensed CC BY-NC-SA 4.0 (decided October 2026). Contribution terms are in CONTRIBUTING.md. TODO(owner): have them checked.
 - TODO(owner): domain (worksindev.com / worksindev.co.uk not checked).
