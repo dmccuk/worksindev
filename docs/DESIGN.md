@@ -48,15 +48,27 @@ Stand-up (Derek, Head of IT): "Welcome aboard. Brant will show you round. He's o
 | Ticket | From | Points | Task | Check |
 | --- | --- | --- | --- | --- |
 | DART-101 | Sandra | 1 | Reset my password, I'm locked out | Sandra's account password changed and unlocked |
-| DART-102 | Monitoring | 3 | Disk full on web01 | Largest log found with `du`, rotated, `df` under 80% |
+| DART-102 | Monitoring | 3 | Disk filling up on web01 | `/var/log` (an 8 MB tmpfs) emptied with `truncate`, not deleted |
 | DART-103 | Derek | 1 | What's my IP? | Correct address written in the ticket |
-| DART-104 | Kev | 2 | Who keeps editing /etc/hosts? | Answer found in the logs with `grep` |
-| DART-105 | Derek | 1 | URGENT: printer broken (interruption) | Reassigned to facilities, politely |
-| DART-106 | Kev | 5 | Deploy my build, it works in dev | App running; the missing config file found and added |
+| DART-104 | Priya | 2 | Who keeps editing /etc/hosts? | Answer found in the sudo log with `grep` |
+| DART-105 | Derek | 1 | URGENT: printer broken (interruption, after 2 done) | Reassigned to facilities |
+| DART-106 | Kev | 5 | Deploy my build, it works in dev | App running in production mode with the right config |
+| DART-107 | Derek | 3 | The website is down on web02 (after 4 done) | Fixed nginx config copied with `scp`, moved into place over `ssh`, nginx restarted; no stray `.conf` backups left in `http.d` |
 
 DART-106 is the first build thrown over the fence. It fails because a config file exists only on Kev's laptop. The retro asks why, which sets up sprint 2.
 
-Real-world translation card: users and passwords, `df`/`du`, `ip addr`, `grep` and log files, and "configuration that lives on one laptop is a bug".
+## Sprint 2 in full: Who changed prod?
+
+Servers: web01 (terminal) and gitbit (background, hosts bare repos over SSH). A `reference-transaction` hook in every repo writes its log and file list to `/var/lib/desk`, which the checks and the GitBit panel read. The shop repo's 2014 history is built by `scripts/build-darts-shop-repo.sh` and unpacked at start, because building it in the VM is slow.
+
+| Ticket | From | Points | Task | Check |
+| --- | --- | --- | --- | --- |
+| DART-201 | Priya | 3 | Put ~/darts-config under version control | A commit containing both config files |
+| DART-202 | Derek | 2 | Who changed the dartboard price? | `git log -p` or `git blame`: it was Tom |
+| DART-203 | Derek | 3 | Put the price back, without losing history | `git revert`; Tom's commit still in history |
+| DART-204 | Tom | 3 | Push the shop to GitBit | GitBit's latest commit matches web01's |
+| DART-205 | Sandra | 1 | Can I be admin on GitBit? (interruption, after 2 done) | Read access to one repo: least privilege |
+| DART-206 | Priya | 3 | Kev committed a password (after 4 done) | `git rm --cached .env`, `.gitignore`, pushed; `.env` still on web01 |
 
 ## Cast (staff directory)
 
