@@ -1,41 +1,22 @@
 /**
  * The worker screen: the Jeera queue, the open ticket, the terminal, chat
- * and tools. Progress is saved in this browser only.
+ * and tools. Progress is saved in this browser only (see storage.ts).
  */
 import { initLayout, resetLayout } from './layout';
-import { retro, setup, sprint, tickets, translation, type CheckResult, type Person, type Ticket } from './sprint1';
+import { sprints } from './sprints';
+import { clearSprint, loadGame, loadSprint, saveGame, saveSprint, type SprintProgress } from './storage';
+import type { CheckResult, Person, Ticket, VMs } from './types';
 import { GameVM } from './vm';
 
-const STORE = 'wid-sprint1';
-
-interface Progress {
-	done: string[];
-	opened: string[];
-	chat: { from: Person; text: string; time: string }[];
-	promoted: boolean;
-	username?: string;
-}
-
 const PASSWORD = 'Welcome1';
-// Accounts that already exist on web01, or belong to the cast.
-const TAKEN = ['root', 'learner', 'sandra', 'kev', 'brant', 'derek', 'priya', 'tom', 'admin', 'nobody', 'sshd', 'daemon', 'bin'];
+// Accounts that already exist on the servers, or belong to the cast.
+const TAKEN = ['root', 'learner', 'sandra', 'kev', 'brant', 'derek', 'priya', 'tom', 'admin', 'nobody', 'sshd', 'daemon', 'bin', 'nginx', 'git'];
 
 /** Returns why a username can't be used, or null if it's fine. */
 function usernameProblem(name: string): string | null {
-	if (!/^[a-z][a-z0-9]{1,15}$/.test(name))
-		return 'Use 2 to 16 lowercase letters and numbers, starting with a letter.';
+	if (!/^[a-z][a-z0-9]{1,15}$/.test(name)) return 'Use 2 to 16 lowercase letters and numbers, starting with a letter.';
 	if (TAKEN.includes(name)) return `${name} is already taken at Darts Unlimited. Pick another.`;
 	return null;
-}
-
-function loadProgress(): Progress {
-	try {
-		const p = JSON.parse(localStorage.getItem(STORE) ?? 'null') as Progress | null;
-		if (p?.done) return p;
-	} catch {
-		// Fall through to a fresh start.
-	}
-	return { done: [], opened: [], chat: [], promoted: false };
 }
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -49,20 +30,27 @@ const el = (tag: string, cls?: string, text?: string) => {
 export function startDesk() {
 	const root = $('.workspace');
 	const layout = initLayout(root);
-	const vm = new GameVM();
 	const base = root.dataset.vmBase!;
-	let progress = loadProgress();
+	const game = loadGame();
+	const sprint = sprints.find((s) => s.number === game.current) ?? sprints[0];
+	const { tickets } = sprint;
+	const progress: SprintProgress = loadSprint(sprint.number);
+	const vms: VMs = Object.fromEntries(sprint.servers.map((s) => [s.name, new GameVM()]));
+	const main = sprint.servers.find((s) => s.terminal) ?? sprint.servers[0];
 	let selected: string | null = null;
-	const hintsShown: Record<string, number> = {};
+	const revealed: Record<string, number> = {};
 	const lastResult: Record<string, CheckResult> = {};
+	const save = () => saveSprint(sprint.number, progress);
 
-	const save = () => {
-		try {
-			localStorage.setItem(STORE, JSON.stringify(progress));
-		} catch {
-			// Storage can be blocked; the sprint still works for this visit.
-		}
-	};
+	// Labels that depend on the sprint.
+	$('#sprint-name').textContent = `Sprint ${sprint.number}: ${sprint.title}`;
+	$('#h-queue').textContent = `Jeera: sprint ${sprint.number}`;
+	$('#h-term').textContent = `Terminal: ${main.name}`;
+	document.querySelectorAll<HTMLElement>('[data-unlocks]').forEach((t) => {
+		const n = Number(t.dataset.unlocks);
+		t.classList.toggle('locked', n > sprint.number);
+		t.querySelector('.unlock')!.textContent = n > sprint.number ? `Sprint ${n}` : 'In use';
+	});
 
 	// Game clock: Monday 09:00, three minutes per message.
 	const clock = () => {
@@ -75,14 +63,13 @@ export function startDesk() {
 
 	// Chat
 	const chatLog = $('#chat-log');
-	const renderMessage = (m: Progress['chat'][number]) => {
+	const renderMessage = (m: SprintProgress['chat'][number]) => {
 		const li = el('li', `msg from-${m.from.toLowerCase()}`);
 		const head = el('p', 'msg-head');
 		head.append(el('strong', '', m.from), el('span', 'time', m.time));
 		li.append(head);
 		for (const para of m.text.split('\n\n')) {
-			const p = el(para.includes('=') && !para.includes(' ') ? 'pre' : 'p', 'msg-text', para);
-			li.append(p);
+			li.append(el(para.includes('=') && !para.includes(' ') ? 'pre' : 'p', 'msg-text', para));
 		}
 		chatLog.append(li);
 		chatLog.scrollTop = chatLog.scrollHeight;
@@ -156,22 +143,61 @@ export function startDesk() {
 		say(t.from, t.thanks);
 		renderQueue();
 		renderTicket();
-		const newly = arrived().slice(before);
-		for (const n of newly) {
+		for (const n of arrived().slice(before)) {
 			setTimeout(() => {
 				say(n.from, `${n.title}. ${n.body[0]}`);
 				document.querySelector('[data-tab="panel-queue"]')?.classList.add('unread');
 			}, 1500);
 		}
-		if (arrived().length === tickets.length && progress.done.length === tickets.length) {
-			void sayLater(sprint.done, 1500);
-		}
+		if (progress.done.length === tickets.length) void sayLater(sprint.done, 1500);
+	};
+
+	// The "Stuck?" coach: checks which steps are already done on the servers,
+	// then shows the next one. Each press reveals one more step.
+	const coach = async () => {
+		const t = tickets.find((x) => x.id === selected);
+		if (!t || progress.done.includes(t.id)) return;
+		const btn = $<HTMLButtonElement>('#stuck');
+		btn.disabled = true;
+		const states = await Promise.all(t.steps.map((s) => (s.done ? s.done(vms).catch(() => false) : null)));
+		btn.disabled = false;
+		if (selected !== t.id) return;
+		const shown = revealed[t.id] ?? 0;
+		let next = states.findIndex((d, i) => d === false || (d === null && i >= shown));
+		if (next === -1) next = t.steps.length - 1;
+		revealed[t.id] = Math.min(t.steps.length, Math.max(shown + 1, next + 1));
+		renderCoach(t, states);
+		document.querySelector('#coach')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	};
+	const renderCoach = (t: Ticket, states: (boolean | null)[] = []) => {
+		const box = document.querySelector('#coach');
+		if (!box) return;
+		box.replaceChildren();
+		const shown = revealed[t.id] ?? 0;
+		if (!shown) return;
+		box.append(el('h4', '', 'Stuck? Here is what to do'));
+		const ol = el('ol', 'steps');
+		t.steps.slice(0, shown).forEach((s, i) => {
+			const done = states[i] === true;
+			const li = el('li', done ? 'done' : i === shown - 1 ? 'current' : '');
+			const label = el('p', 'step-text');
+			if (done) label.append(el('strong', '', 'Done. '));
+			label.append(document.createTextNode(s.text));
+			li.append(label);
+			if (s.cmd && !done) li.append(el('pre', 'cmd', s.cmd));
+			ol.append(li);
+		});
+		box.append(ol);
+		if (shown < t.steps.length)
+			box.append(el('p', 'more', `Step ${shown} of ${t.steps.length}. Press Stuck? again for the next step.`));
 	};
 
 	const renderTicket = () => {
 		const pane = $('#ticket-body');
 		pane.replaceChildren();
+		const stuck = $<HTMLButtonElement>('#stuck');
 		const t = tickets.find((x) => x.id === selected);
+		stuck.hidden = !t || progress.done.includes(t.id);
 		if (!t) {
 			pane.append(el('p', 'empty', 'Pick a ticket from the queue to start work on it.'));
 			return;
@@ -179,8 +205,7 @@ export function startDesk() {
 		const done = progress.done.includes(t.id);
 		const head = el('div', 'ticket-head');
 		head.append(el('span', 'card-id', t.id), el('h3', 'ticket-title', t.title));
-		const meta = el('p', 'ticket-meta', `From ${t.from}. ${t.points} ${t.points === 1 ? 'point' : 'points'}.${done ? ' Done.' : ''}`);
-		head.append(meta);
+		head.append(el('p', 'ticket-meta', `From ${t.from}. ${t.points} ${t.points === 1 ? 'point' : 'points'}.${done ? ' Done.' : ''}`));
 		pane.append(head);
 		for (const para of t.body) pane.append(el('p', '', para));
 
@@ -212,7 +237,7 @@ export function startDesk() {
 				b.addEventListener('click', async () => {
 					b.setAttribute('disabled', '');
 					b.textContent = 'Checking…';
-					const r = await t.check!(vm);
+					const r = await t.check!(vms);
 					b.removeAttribute('disabled');
 					b.textContent = 'Check my work';
 					result(t.id, r);
@@ -249,24 +274,12 @@ export function startDesk() {
 			out.className = 'result pass';
 		}
 		pane.append(out);
-
-		if (!done && t.hints.length) {
-			const shown = hintsShown[t.id] ?? 0;
-			const hints = el('div', 'hints');
-			hints.append(el('h4', '', 'Hints'));
-			const ol = el('ol');
-			t.hints.slice(0, shown).forEach((h) => ol.append(el('li', '', h)));
-			hints.append(ol);
-			if (shown < t.hints.length) {
-				const b = el('button', 'link', `Show a hint (${shown + 1} of ${t.hints.length})`);
-				b.setAttribute('type', 'button');
-				b.addEventListener('click', () => {
-					hintsShown[t.id] = shown + 1;
-					renderTicket();
-				});
-				hints.append(b);
-			}
-			pane.append(hints);
+		if (!done) {
+			const box = el('div', 'coach');
+			box.id = 'coach';
+			box.setAttribute('aria-live', 'polite');
+			pane.append(box);
+			renderCoach(t);
 		}
 	};
 
@@ -282,13 +295,14 @@ export function startDesk() {
 		renderTicket();
 		layout.show('panel-ticket');
 	};
+	$('#stuck').addEventListener('click', () => void coach());
 
 	// Sprint review: the retro, then promotion.
 	const review = $<HTMLDialogElement>('#review-dialog');
 	$('#review').addEventListener('click', () => {
 		const form = $('#retro-form');
 		form.replaceChildren();
-		retro.forEach((q, qi) => {
+		sprint.retro.forEach((q, qi) => {
 			const fs = el('fieldset');
 			fs.append(el('legend', '', q.question));
 			q.options.forEach((o, oi) => {
@@ -307,6 +321,7 @@ export function startDesk() {
 		const submit = el('button', 'btn', 'Submit retro');
 		submit.setAttribute('type', 'submit');
 		form.append(submit);
+		$('#review-intro').textContent = `Derek wants to know what you learned. Answer all ${sprint.retro.length} to finish the sprint.`;
 		$('#promotion').hidden = true;
 		form.hidden = false;
 		review.showModal();
@@ -316,40 +331,67 @@ export function startDesk() {
 		const form = e.currentTarget as HTMLFormElement;
 		const data = new FormData(form);
 		let right = 0;
-		retro.forEach((q, qi) => {
+		sprint.retro.forEach((q, qi) => {
 			const ok = Number(data.get(`q${qi}`)) === q.correct;
 			if (ok) right++;
 			const why = form.querySelectorAll<HTMLElement>('.why')[qi];
 			why.textContent = `${ok ? 'Right.' : `Not quite: ${q.options[q.correct]}.`} ${q.why}`;
 			why.className = `why ${ok ? 'pass' : 'fail'}`;
 		});
-		if (right === retro.length) {
-			progress.promoted = true;
-			save();
-			form.querySelector('button[type="submit"]')?.remove();
-			const promo = $('#promotion');
-			promo.hidden = false;
-			const tbody = $('#translation');
-			tbody.replaceChildren();
-			for (const [a, b] of translation) {
-				const tr = el('tr');
-				tr.append(el('th', '', a), el('td', '', b));
-				tbody.append(tr);
-			}
-			promo.scrollIntoView({ behavior: 'smooth' });
+		if (right !== sprint.retro.length) return;
+		progress.promoted = true;
+		save();
+		form.querySelector('button[type="submit"]')?.remove();
+		const promo = $('#promotion');
+		promo.hidden = false;
+		$('#promotion-title').textContent = `Promoted: stripe ${sprint.number}`;
+		const tbody = $('#translation');
+		tbody.replaceChildren();
+		for (const [a, b] of sprint.translation) {
+			const tr = el('tr');
+			tr.append(el('th', '', a), el('td', '', b));
+			tbody.append(tr);
 		}
+		const following = sprints.find((s) => s.number === sprint.number + 1);
+		const next = $('#next-sprint');
+		next.replaceChildren();
+		if (following) {
+			const b = el('button', 'btn', `Start sprint ${following.number}: ${following.title}`);
+			b.setAttribute('type', 'button');
+			b.addEventListener('click', () => {
+				game.current = following.number;
+				saveGame(game);
+				location.reload();
+			});
+			next.append(el('p', '', sprint.next), b);
+		} else {
+			next.append(el('p', '', `${sprint.next} It's being built now.`));
+		}
+		promo.scrollIntoView({ behavior: 'smooth' });
 	});
 	$('#review-close').addEventListener('click', () => review.close());
 
 	// Top bar
 	$('#reset-layout').addEventListener('click', resetLayout);
 	$('#restart').addEventListener('click', () => {
-		if (!confirm('Start sprint 1 again from the beginning? Your progress in this browser is cleared.')) return;
-		try {
-			localStorage.removeItem(STORE);
-		} catch {
-			// Nothing saved.
-		}
+		if (!confirm(`Reset sprint ${sprint.number}? Your tickets, chat and progress for this sprint are cleared, and the servers start fresh.`))
+			return;
+		clearSprint(sprint.number);
+		location.reload();
+	});
+	const sprintPicker = $<HTMLSelectElement>('#sprint-picker');
+	for (const s of sprints) {
+		const reachable = s.number === 1 || loadSprint(s.number - 1).promoted;
+		const o = el('option', '', `Sprint ${s.number}: ${s.title}`) as HTMLOptionElement;
+		o.value = String(s.number);
+		o.disabled = !reachable;
+		o.selected = s.number === sprint.number;
+		sprintPicker.append(o);
+	}
+	sprintPicker.hidden = sprints.length < 2;
+	sprintPicker.addEventListener('change', () => {
+		game.current = Number(sprintPicker.value);
+		saveGame(game);
 		location.reload();
 	});
 	document.querySelectorAll<HTMLElement>('[data-tab]').forEach((t) =>
@@ -363,10 +405,12 @@ export function startDesk() {
 
 	const clockIn = $<HTMLDialogElement>('#clock-in');
 	const nameInput = $<HTMLInputElement>('#username');
-	if (progress.username) nameInput.value = progress.username;
+	if (game.username) nameInput.value = game.username;
+	$('#clock-in-time').textContent = sprint.number === 1 ? 'Monday, 9:00am' : `Sprint ${sprint.number}, Monday, 9:00am`;
+	if (sprint.number > 1) $('#clock-in-title').textContent = `Sprint ${sprint.number}: ${sprint.title}`;
 	if (progress.done.length)
 		$('#clock-in-text').textContent =
-			'Welcome back. Your tickets are where you left them. web01 has been reset to how it was on Monday morning, so redo any half-finished work.';
+			'Welcome back. Your tickets are where you left them. The servers have been reset to Monday morning, so redo any half-finished work.';
 	clockIn.showModal();
 	clockIn.addEventListener('cancel', (e) => e.preventDefault());
 	$('#clock-in-form').addEventListener('submit', async (e) => {
@@ -376,23 +420,29 @@ export function startDesk() {
 		$('#username-error').textContent = problem ?? '';
 		nameInput.setAttribute('aria-invalid', String(Boolean(problem)));
 		if (problem) return;
-		progress.username = user;
-		save();
-		$('#h-term').textContent = `Terminal: ${user}@${sprint.vm.name}`;
+		game.username = user;
+		saveGame(game);
+		$('#h-term').textContent = `Terminal: ${user}@${main.name}`;
 		clockIn.close();
 		if (!progress.chat.length) void sayLater(sprint.intro.map((m) => ({ ...m, text: m.text.replace('{name}', user) })), 1200);
 		const status = $('#term-status');
+		const hosts = sprint.servers.map((s) => `${s.ip.split('/')[0]} ${s.name}`).join('\n');
 		try {
-			await vm.start($('#term'), {
-				base,
-				name: sprint.vm.name,
-				ip: sprint.vm.ip,
-				setup,
-				user,
-				password: PASSWORD,
-				onStatus: (s) => (status.textContent = s),
-			});
-			vm.focus();
+			await Promise.all(
+				sprint.servers.map((s) =>
+					vms[s.name].start(s === main ? $('#term') : null, {
+						base,
+						name: s.name,
+						ip: s.ip,
+						setup: s.setup,
+						user,
+						password: PASSWORD,
+						hosts,
+						onStatus: s === main ? (text) => (status.textContent = text) : () => undefined,
+					}),
+				),
+			);
+			vms[main.name].focus();
 		} catch {
 			// The status line already says what went wrong.
 		}

@@ -1,10 +1,12 @@
 /**
- * The terminal: real Linux in the page, using the v86 emulator (BSD-2-Clause)
- * and the Alpine image built by learndevops (labs/_browser-vm in that repo).
+ * A Linux server in the page, using the v86 emulator (BSD-2-Clause) and the
+ * Alpine image built by learndevops (labs/_browser-vm in that repo).
  *
  * The sprint's scenario is copied into the VM as a script and run as root
- * before the terminal is shown. Ticket checks read files straight from the
- * VM's filesystem, so they never type into the player's terminal.
+ * before the player gets the terminal. Ticket checks read files straight
+ * from the VM's filesystem, so they never type into the player's terminal.
+ * Servers without a terminal run in the background; the player reaches them
+ * over SSH. All servers on the page share v86's in-browser network.
  */
 import '@xterm/xterm/css/xterm.css';
 import type { Terminal } from '@xterm/xterm';
@@ -22,6 +24,8 @@ export interface VMOptions {
 	/** The player's username and password on the VM */
 	user: string;
 	password: string;
+	/** Lines for /etc/hosts, so servers can reach each other by name */
+	hosts: string;
 	onStatus: (text: string) => void;
 }
 
@@ -33,13 +37,19 @@ type Emulator = {
 };
 
 export class GameVM {
+	/** The player's username on this server */
+	user = '';
 	private emulator?: Emulator;
 	private term?: Terminal;
 	private fit?: FitAddon;
 
-	/** Starts the VM in `el` and resolves when the player can type. */
-	async start(el: HTMLElement, opts: VMOptions): Promise<void> {
+	/**
+	 * Starts the VM and resolves when it is ready. With an element, it shows a
+	 * terminal logged in as the player; without one, it runs in the background.
+	 */
+	async start(el: HTMLElement | null, opts: VMOptions): Promise<void> {
 		const { base } = opts;
+		this.user = opts.user;
 		opts.onStatus('Loading the emulator…');
 
 		const filesOk = await Promise.all(
@@ -59,23 +69,26 @@ export class GameVM {
 			import('@xterm/xterm'),
 			import('@xterm/addon-fit'),
 		]);
-		// Measure the terminal font only after it has loaded, or letters misalign.
-		await document.fonts.load("14px 'JetBrains Mono Variable'").catch(() => undefined);
 
-		const term = new Terminal({
-			cursorBlink: true,
-			fontFamily: "'JetBrains Mono Variable', ui-monospace, monospace",
-			fontSize: 14,
-			theme: { background: '#10161f', foreground: '#dfe6dd', cursor: '#f2c230' },
-		});
-		const fit = new FitAddon();
-		term.loadAddon(fit);
-		term.open(el);
-		fit.fit();
-		this.term = term;
-		this.fit = fit;
-		new ResizeObserver(() => this.refit()).observe(el);
-		term.write(`Logging in to ${opts.name}…\r\n`);
+		let term: Terminal | undefined;
+		if (el) {
+			// Measure the terminal font only after it has loaded, or letters misalign.
+			await document.fonts.load("14px 'JetBrains Mono Variable'").catch(() => undefined);
+			term = new Terminal({
+				cursorBlink: true,
+				fontFamily: "'JetBrains Mono Variable', ui-monospace, monospace",
+				fontSize: 14,
+				theme: { background: '#10161f', foreground: '#dfe6dd', cursor: '#f2c230' },
+			});
+			const fit = new FitAddon();
+			term.loadAddon(fit);
+			term.open(el);
+			fit.fit();
+			this.term = term;
+			this.fit = fit;
+			new ResizeObserver(() => this.refit()).observe(el);
+			term.write(`Logging in to ${opts.name}…\r\n`);
+		}
 		opts.onStatus('Starting Linux…');
 
 		const emulator = new V86({
@@ -109,7 +122,7 @@ export class GameVM {
 				waitDone = null;
 				done();
 			}
-			if (quiet) return;
+			if (quiet || !term) return;
 			pending.push(byte);
 			if (!scheduled) {
 				scheduled = true;
@@ -140,15 +153,6 @@ export class GameVM {
 			};
 			drain();
 		};
-		// Commands end in `echo LD-$((40+2))`: "LD-42" appears only once
-		// everything before it has finished, never in the echoed command.
-		const run = (cmd: string) =>
-			new Promise<void>((resolve) => {
-				tail = '';
-				waitFor = 'LD-42';
-				waitDone = resolve;
-				type(`${cmd}; echo LD-$((40+2))\n`);
-			});
 		// Types a line and waits until the output contains `text`.
 		const typeUntil = (line: string, text: string) =>
 			new Promise<void>((resolve) => {
@@ -157,6 +161,9 @@ export class GameVM {
 				waitDone = resolve;
 				type(line);
 			});
+		// Commands end in `echo LD-$((40+2))`: "LD-42" appears only once
+		// everything before it has finished, never in the echoed command.
+		const run = (cmd: string) => typeUntil(`${cmd}; echo LD-$((40+2))\n`, 'LD-42');
 
 		await new Promise<void>((resolve, reject) => {
 			emulator.add_listener('download-error', () => reject(new Error('download failed')));
@@ -171,6 +178,9 @@ export class GameVM {
 		// Create the player's account, then build the sprint's scenario.
 		const account = `#!/bin/sh
 P=${opts.user}
+cat >> /etc/hosts <<'EOF'
+${opts.hosts}
+EOF
 adduser -D -s /bin/bash "$P"
 echo "$P:${opts.password}" | chpasswd
 echo "$P ALL=(ALL) ALL" > /etc/sudoers.d/desk-player && chmod 440 /etc/sudoers.d/desk-player
@@ -181,14 +191,19 @@ echo '. ~/.bashrc' > /home/$P/.bash_profile
 chown "$P:$P" /home/$P/.bashrc /home/$P/.bash_profile
 `;
 		await emulator.create_file('/tmp/.desk-setup.sh', new TextEncoder().encode(account + opts.setup));
-		fit.fit();
+		this.fit?.fit();
+		const size = term ? `stty cols ${term.cols} rows ${term.rows}; ` : '';
 		await run(
-			`stty cols ${term.cols} rows ${term.rows}; sudo ld-net ${opts.name} ${opts.ip}; ` +
+			`${size}sudo ld-net ${opts.name} ${opts.ip}; ` +
 				`echo learner | sudo -S sh -c 'sh /tmp/.desk-setup.sh; rm -f /tmp/.desk-setup.sh' >/dev/null 2>&1`,
 		);
+		if (!term) {
+			opts.onStatus('');
+			return;
+		}
+
 		// Log in as the player. sudo still remembers the password from setup.
 		await typeUntil(`exec sudo -u ${opts.user} -i\n`, `${opts.user}@${opts.name}`);
-
 		quiet = false;
 		term.reset();
 		term.onData((data) => type(data));
@@ -196,23 +211,16 @@ chown "$P:$P" /home/$P/.bashrc /home/$P/.bash_profile
 		opts.onStatus('');
 	}
 
-	/** Reads a file from the VM, or returns null if it does not exist. */
+	/**
+	 * Reads a file from the VM, or returns null if it does not exist. The
+	 * emulator also returns null for an empty file, so marker files the desk
+	 * checks for must have some content.
+	 */
 	async readFile(path: string): Promise<string | null> {
 		if (!this.emulator) return null;
 		try {
 			const data = await this.emulator.read_file(path);
 			return data ? new TextDecoder().decode(data) : null;
-		} catch {
-			return null;
-		}
-	}
-
-	/** Size in bytes, or null if the file does not exist. */
-	async fileSize(path: string): Promise<number | null> {
-		if (!this.emulator) return null;
-		try {
-			const data = await this.emulator.read_file(path);
-			return data ? data.length : null;
 		} catch {
 			return null;
 		}
