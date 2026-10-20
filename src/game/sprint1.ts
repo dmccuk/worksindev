@@ -288,6 +288,40 @@ export const sprint1: Sprint = {
 				return { ok: false, message: "The config looks fixed, but nginx on web02 isn't running. Start it." };
 			},
 		},
+		{
+			id: 'DART-108',
+			title: 'Why is web01 emailing everyone?',
+			from: 'Sandra',
+			points: 2,
+			body: [
+				'Every minute, the whole company gets an email from web01 saying "Darts backup complete". I have 400 of them. I have screenshotted all 400.',
+				"Brant set up a nightly backup job before his holiday. Make it run once a day, at 2am, like it's supposed to. Don't delete it: we still need the backup.",
+			],
+			steps: [
+				{
+					text: "Scheduled jobs live in a crontab, and each user has their own. This job is root's, so use sudo. Your password is Welcome1.",
+					cmd: 'sudo crontab -l',
+				},
+				{
+					text: 'Each line starts with five time fields: minute, hour, day of month, month, day of week. * means "every". Find the darts-backup line: five stars means every minute of every day.',
+				},
+				{
+					text: "Edit root's crontab. It opens in vi: move to the darts-backup line, press i to type, change the first two fields to 0 2, press Esc, then type :wq and press Enter.",
+					cmd: 'sudo crontab -e',
+					done: async (vms) => backupSchedule(await vms.web01.readFile('/etc/crontabs/root')) === 'daily',
+				},
+				{ text: 'Check the new schedule: 0 2 * * * means at minute 0 of hour 2, every day. Then press Check my work.', cmd: 'sudo crontab -l' },
+			],
+			opened: "I've made a folder for them. It's called 'web01'. It has 400 emails in it.",
+			thanks: 'The emails have stopped! I will keep the folder, for evidence.',
+			check: async (vms) => {
+				const s = backupSchedule(await vms.web01.readFile('/etc/crontabs/root'));
+				if (s === 'gone') return { ok: false, message: "The darts-backup job has gone from root's crontab. Brant needs it, just once a day. Add it back." };
+				if (s === 'every-minute') return { ok: false, message: 'The backup still runs every minute.' };
+				if (s === 'daily') return { ok: true, message: 'The backup now runs once a day, at 2am.' };
+				return { ok: false, message: `The backup runs, but not once a day at 2am. Its schedule is now: ${s}` };
+			},
+		},
 	],
 	retro: [
 		{
@@ -332,6 +366,10 @@ export const sprint1: Sprint = {
 			'Alpine Linux uses OpenRC (service nginx restart works too). On Ubuntu and Red Hat, the same job is systemctl restart nginx.',
 		],
 		[
+			'crontab -l, crontab -e',
+			'How you schedule jobs on almost every Linux server. Newer systems also have systemd timers.',
+		],
+		[
 			'nginx -t and the include folder',
 			'Test before you restart. nginx loads every .conf file in its include folder, so keep backups somewhere else.',
 		],
@@ -340,6 +378,25 @@ export const sprint1: Sprint = {
 	next: 'Sprint 2, Who changed prod?, brings version control and GitBit.',
 	promotion: 'You are now officially part of operations. Derek has already forgotten your name.',
 };
+
+// DART-108: the 400 emails so far, one a minute since Friday 17:00. Made here
+// rather than in the VM, where a 400-line shell loop takes several seconds.
+const BACKUP_SPAM = Array.from({ length: 400 }, (_, i) => {
+	const h = 17 + Math.floor(i / 60);
+	const m = String(i % 60).padStart(2, '0');
+	return `Oct 10 ${h}:${m} Darts backup complete. Emailed everyone@darts.example\n`;
+}).join('');
+sprint1.servers[0].files = { '/tmp/darts-backup.log': btoa(BACKUP_SPAM) };
+
+/** Reads the darts-backup line in root's crontab: 'gone', 'every-minute', 'daily' or its five time fields. */
+function backupSchedule(crontab: string | null): string {
+	const line = (crontab ?? '').split('\n').find((l) => !l.trim().startsWith('#') && l.includes('darts-backup'));
+	if (!line) return 'gone';
+	const f = line.trim().split(/\s+/).slice(0, 5);
+	if (f[0] === '*') return 'every-minute';
+	if (/^\d+$/.test(f[0]) && Number(f[0]) < 60 && f[1] === '2' && f.slice(2).every((x) => x === '*')) return 'daily';
+	return f.join(' ');
+}
 
 async function sandraState(vm: import('./vm').GameVM): Promise<'gone' | 'locked' | 'unchanged' | 'reset'> {
 	const shadow = await vm.readFile('/etc/shadow');
@@ -428,6 +485,21 @@ chmod +x $B/start.sh
 echo "Darts Shop 1.4. Run ./start.sh" > $B/README
 chown -R "$P:$P" /home/$P/builds
 rm -f /tmp/darts-shop.mode /tmp/.darts-shop.tried
+
+# DART-108: Brant's "nightly" backup runs every minute and emails everyone.
+cat > /usr/local/bin/darts-backup <<'EOF'
+#!/bin/sh
+# Backs up the shop and tells everyone. Brant.
+echo "$(date '+%b %d %H:%M') Darts backup complete. Emailed everyone@darts.example" >> /var/log/darts-backup.log
+EOF
+chmod 755 /usr/local/bin/darts-backup
+mv /tmp/darts-backup.log /var/log/darts-backup.log
+cat >> /etc/crontabs/root <<'EOF'
+
+# Darts shop backup. Runs nightly. Brant.
+* * * * * /usr/local/bin/darts-backup
+EOF
+crond -b
 
 # DART-107: Brant's handover note and fixed nginx config.
 mkdir -p /home/$P/handover
