@@ -1,0 +1,585 @@
+---
+import Base from '../layouts/Base.astro';
+
+const LEARNDEVOPS = 'https://dmccuk.github.io/learndevops/';
+
+// Sprint 1's board, straight from docs/DESIGN.md.
+const board = [
+	{
+		column: 'To do',
+		tickets: [
+			{ id: 'DART-106', title: 'Deploy my build, it works in dev', from: 'Kev', points: 5 },
+			{ id: 'DART-104', title: 'Who keeps editing /etc/hosts?', from: 'Kev', points: 2 },
+			{ id: 'DART-105', title: 'URGENT: printer broken', from: 'Derek', points: 1, interruption: true },
+		],
+	},
+	{
+		column: 'In progress',
+		tickets: [{ id: 'DART-102', title: 'Disk full on web01', from: 'Monitoring', points: 3 }],
+	},
+	{
+		column: 'Done',
+		tickets: [
+			{ id: 'DART-101', title: "Reset my password, I'm locked out", from: 'Sandra', points: 1 },
+			{ id: 'DART-103', title: "What's my IP?", from: 'Derek', points: 1 },
+		],
+	},
+];
+
+const sprints = [
+	{ title: 'Onboarding', adds: 'The shell, users, files and logs', tool: 'Jeera' },
+	{ title: 'Who changed prod?', adds: 'Version control', tool: 'GitBit' },
+	{ title: 'Works in dev', adds: 'Builds, dependencies and environments', tool: 'Jonkins' },
+	{ title: 'The pipeline', adds: 'Automated tests and deploys', tool: 'Jonkins pipelines' },
+	{ title: 'Fifty snowflakes', adds: 'Configuring many servers the same way', tool: 'Ansibubble' },
+	{ title: 'Dockle all the things', adds: 'Containers and images', tool: 'Dockle' },
+	{ title: '3am', adds: 'Monitoring, alerts and on-call', tool: 'Naggios' },
+	{ title: 'Ten deploys a day', adds: 'Everything at once. The fence comes down.', tool: 'All of them' },
+];
+
+const staff = [
+	{ name: 'Derek Vance', role: 'Head of IT, your manager', ext: '0', known: 'Wants "the DevOps" by Friday.' },
+	{ name: 'Brant Holloway', role: 'Senior sysadmin', ext: '22', known: 'Everything goes through Brant. Answers with man.' },
+	{ name: 'Sandra Price', role: 'Windows admin', ext: '3389', known: 'Screenshots everything. Has a fix in the registry.' },
+	{ name: 'Kev Malone', role: 'Lead developer', ext: '8080', known: '"It works in dev."' },
+	{ name: 'Priya Nair', role: 'Security', ext: '443', known: 'Says no. Usually right.' },
+	{ name: 'Tom', role: 'The intern', ext: '2375', known: 'Already knows Dockle. Will not stop mentioning it.' },
+];
+
+const tools = [
+	{ game: 'Jeera', real: 'Jira', does: 'Ticket queue and sprints' },
+	{ game: 'GitBit', real: 'GitHub', does: 'Hosts your Git repositories' },
+	{ game: 'Jonkins', real: 'Jenkins', does: 'Builds, tests and deploys code' },
+	{ game: 'Ansibubble', real: 'Ansible', does: 'Configures many servers at once' },
+	{ game: 'Dockle', real: 'Docker', does: 'Packages apps into containers' },
+	{ game: 'Naggios', real: 'Nagios', does: 'Monitoring and alerts' },
+];
+---
+
+<Base
+	title="Works in Dev: a DevOps game"
+	description="A browser game that teaches real DevOps skills. You're the new ops hire at Darts Unlimited, 2014, and the builds keep coming over the fence."
+>
+	<header class="topbar wrap">
+		<a class="wordmark" href={import.meta.env.BASE_URL}>Works in Dev</a>
+		<a href={LEARNDEVOPS}>Prefer it straight? learndevops.co.uk</a>
+	</header>
+
+	<main>
+		<section class="hero wrap" aria-labelledby="title">
+			<h1 id="title">Works in Dev.</h1>
+			<p class="lede">
+				A DevOps game. It's 2014 and you're the new operations hire at Darts Unlimited. The developers keep throwing
+				builds over the fence. Make them work in production, then fix the reasons they keep breaking, until the fence
+				comes down.
+			</p>
+		</section>
+
+		<section class="scene" aria-label="The developers throw a build over the fence to operations">
+			<div class="side dev">
+				<p class="sign">Development</p>
+				<blockquote>
+					<p>"Works in dev!"</p>
+					<footer>Kev, lead developer</footer>
+				</blockquote>
+			</div>
+			<div class="fence" aria-hidden="true"></div>
+			<div class="side ops">
+				<p class="sign">Operations</p>
+				<blockquote>
+					<p>"Your problem now."</p>
+					<footer>Everyone, to you, on day one</footer>
+				</blockquote>
+			</div>
+			<div class="build" aria-hidden="true">
+				<svg viewBox="0 0 64 52" width="64" height="52">
+					<rect x="2" y="8" width="60" height="42" rx="3" fill="var(--box)" stroke="var(--box-dark)" stroke-width="2"></rect>
+					<rect x="26" y="8" width="12" height="42" fill="var(--tape)"></rect>
+					<path d="M2 8 L14 2 H50 L62 8" fill="var(--box)" stroke="var(--box-dark)" stroke-width="2"></path>
+				</svg>
+				<span class="mono">build-final-v2.tar.gz</span>
+			</div>
+		</section>
+
+		<section class="cta wrap" aria-label="Get started">
+			<p class="status"><strong>Sprint 1 is being built.</strong> Your first day starts soon.</p>
+			<p>
+				The game runs real Linux in your browser. <a href={`${LEARNDEVOPS}playground/`}>Try the same terminal now</a>, or
+				learn it straight at <a href={LEARNDEVOPS}>learndevops.co.uk</a>.
+			</p>
+		</section>
+
+		<section class="band" aria-labelledby="queue">
+			<div class="wrap">
+				<h2 id="queue">Work arrives. You don't choose it.</h2>
+				<p class="intro">
+					Every level is a sprint. Tickets land in your Jeera queue, big and small, and some of them are urgent for no
+					good reason. You choose the order. A ticket only closes when a check proves it works, and anything you fix by
+					hand comes back next sprint.
+				</p>
+				<div class="board" role="group" aria-label="Sprint 1 board">
+					{
+						board.map((col) => (
+							<div class="column">
+								<h3>
+									{col.column} <span class="count">{col.tickets.length}</span>
+								</h3>
+								<ul>
+									{col.tickets.map((t) => (
+										<li class:list={['ticket', { interruption: t.interruption }]}>
+											<span class="mono id">{t.id}</span>
+											<span class="ticket-title">{t.title}</span>
+											<span class="meta">
+												<span>From {t.from}</span>
+												<span class="points" aria-label={`${t.points} story points`}>
+													{t.points}
+												</span>
+											</span>
+											{t.interruption && <span class="flag">Interruption</span>}
+										</li>
+									))}
+								</ul>
+							</div>
+						))
+					}
+				</div>
+			</div>
+		</section>
+
+		<section class="band alt" aria-labelledby="sprints">
+			<div class="wrap">
+				<h2 id="sprints">Eight sprints. Each one brings something new.</h2>
+				<p class="intro">Every sprint adds one tool or idea, and keeps using everything before it.</p>
+				<ol class="sprints">
+					{
+						sprints.map((s) => (
+							<li>
+								<h3>{s.title}</h3>
+								<p>{s.adds}</p>
+								<p class="tool">{s.tool}</p>
+							</li>
+						))
+					}
+				</ol>
+			</div>
+		</section>
+
+		<section class="band" aria-labelledby="staff">
+			<div class="wrap">
+				<h2 id="staff">Staff directory</h2>
+				<p class="intro">Everyone means well. Extension numbers are port numbers, for people who know.</p>
+				<div class="table-scroll">
+					<table>
+						<thead>
+							<tr>
+								<th scope="col">Name</th>
+								<th scope="col">Role</th>
+								<th scope="col">Ext</th>
+								<th scope="col">Known for</th>
+							</tr>
+						</thead>
+						<tbody>
+							{
+								staff.map((p) => (
+									<tr>
+										<th scope="row">{p.name}</th>
+										<td>{p.role}</td>
+										<td class="mono">{p.ext}</td>
+										<td>{p.known}</td>
+									</tr>
+								))
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</section>
+
+		<section class="band alt" aria-labelledby="real">
+			<div class="wrap">
+				<h2 id="real">The tools are parodies. The skills are real.</h2>
+				<p class="intro">
+					The terminal is real Linux, running in your browser. Git is real Git. The office tools are cheap imitations
+					that work like the real thing, and every sprint ends with a card that tells you what they're really called.
+				</p>
+				<div class="table-scroll">
+					<table>
+						<thead>
+							<tr>
+								<th scope="col">At Darts Unlimited</th>
+								<th scope="col">In the real world</th>
+								<th scope="col">What it does</th>
+							</tr>
+						</thead>
+						<tbody>
+							{
+								tools.map((t) => (
+									<tr>
+										<th scope="row">{t.game}</th>
+										<td>{t.real}</td>
+										<td>{t.does}</td>
+									</tr>
+								))
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<footer class="foot wrap">
+		<p>
+			A sister project of <a href={LEARNDEVOPS}>learndevops.co.uk</a>. Darts Unlimited and everyone who works there are
+			fictional. Jeera, GitBit, Jonkins, Ansibubble, Dockle and Naggios are parodies. Jira, GitHub, Jenkins, Ansible,
+			Docker and Nagios are trademarks of their owners, and this game is not affiliated with any of them.
+		</p>
+	</footer>
+</Base>
+
+<style>
+	.topbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.5rem;
+		justify-content: space-between;
+		align-items: baseline;
+		padding-block: 1.25rem;
+		font-size: 0.9375rem;
+	}
+	.wordmark {
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 1.25rem;
+		text-decoration: none;
+	}
+
+	.hero {
+		padding-block: clamp(2rem, 6vw, 4.5rem) 2rem;
+	}
+	h1 {
+		font-size: clamp(3.5rem, 13vw, 9.5rem);
+		font-weight: 800;
+		font-stretch: 75%;
+		letter-spacing: -0.045em;
+		line-height: 0.88;
+	}
+	.lede {
+		max-width: 38rem;
+		margin: 1.5rem 0 0;
+		font-size: clamp(1.125rem, 2vw, 1.3125rem);
+	}
+
+	/* The fence. The one loud thing on the page. */
+	.scene {
+		position: relative;
+		display: grid;
+		grid-template-columns: 1fr clamp(1.5rem, 3vw, 2.25rem) 1fr;
+		min-height: clamp(15rem, 34vw, 22rem);
+		container-type: inline-size;
+		border-block: 1px solid var(--line);
+		overflow: hidden;
+	}
+	.side {
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		padding: 1.25rem var(--gutter) 1.5rem;
+	}
+	.dev {
+		background: var(--dev);
+	}
+	.ops {
+		background: var(--ops);
+		text-align: right;
+	}
+	.sign {
+		margin: 0;
+		align-self: flex-start;
+		padding: 0.2rem 0.6rem;
+		border: 2px solid var(--ink);
+		font-weight: 700;
+		font-size: 0.875rem;
+	}
+	.ops .sign {
+		align-self: flex-end;
+	}
+	blockquote {
+		margin: 0;
+	}
+	blockquote p {
+		margin: 0;
+		font-family: var(--display);
+		font-weight: 700;
+		font-size: clamp(1.375rem, 4vw, 2.5rem);
+		line-height: 1.05;
+	}
+	blockquote footer {
+		margin-top: 0.4rem;
+		color: var(--muted);
+		font-size: 0.9375rem;
+	}
+	.fence {
+		background: repeating-linear-gradient(-45deg, var(--tape) 0 14px, #1b2230 14px 28px);
+		box-shadow:
+			inset 3px 0 0 rgb(0 0 0 / 0.25),
+			inset -3px 0 0 rgb(0 0 0 / 0.25);
+	}
+	.build {
+		position: absolute;
+		left: 18cqw;
+		top: 30%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.25rem;
+		animation: throw 2.2s cubic-bezier(0.35, 0, 0.45, 1) 0.6s both;
+	}
+	.build span {
+		padding: 0.1rem 0.4rem;
+		background: var(--paper);
+		border: 1px solid var(--line);
+		font-size: 0.75rem;
+		white-space: nowrap;
+	}
+	@keyframes throw {
+		0% {
+			transform: translate(0, 0) rotate(0deg);
+		}
+		50% {
+			transform: translate(26cqw, -5.5rem) rotate(-160deg);
+		}
+		85% {
+			transform: translate(46cqw, 1.5rem) rotate(-340deg);
+		}
+		100% {
+			transform: translate(48cqw, 1.25rem) rotate(-352deg);
+		}
+	}
+	@media (max-width: 40rem) {
+		.build {
+			top: 3.25rem;
+			scale: 0.7;
+		}
+		.build span {
+			display: none;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.build {
+			animation: none;
+			transform: translate(48cqw, 1.25rem) rotate(-8deg);
+		}
+	}
+
+	.cta {
+		padding-block: 2rem 3.5rem;
+	}
+	.cta p {
+		max-width: 40rem;
+		margin: 0;
+	}
+	.status {
+		margin-bottom: 0.5rem !important;
+		font-size: 1.25rem;
+	}
+
+	.band {
+		padding-block: clamp(3rem, 7vw, 5rem);
+		border-top: 1px solid var(--line);
+	}
+	.band.alt {
+		background: var(--paper);
+	}
+	h2 {
+		font-size: clamp(2rem, 5vw, 3.25rem);
+		font-weight: 800;
+		max-width: 24ch;
+		text-wrap: balance;
+	}
+	.intro {
+		max-width: 40rem;
+		margin: 1rem 0 2rem;
+		color: var(--muted);
+		font-size: 1.125rem;
+	}
+
+	/* Jeera board */
+	.board {
+		display: grid;
+		gap: 1rem;
+	}
+	@media (min-width: 48rem) {
+		.board {
+			grid-template-columns: repeat(3, 1fr);
+		}
+	}
+	.column {
+		padding: 0.75rem;
+		background: var(--cubicle);
+		border-radius: 4px;
+	}
+	.column h3 {
+		margin: 0.25rem 0.25rem 0.75rem;
+		color: #fff;
+		font-family: var(--body);
+		font-size: 1rem;
+		letter-spacing: 0;
+	}
+	@media (prefers-color-scheme: dark) {
+		.column {
+			background: #2b3748;
+		}
+	}
+	.count {
+		margin-left: 0.25rem;
+		font-weight: 400;
+		opacity: 0.8;
+	}
+	.column ul {
+		display: grid;
+		gap: 0.5rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.ticket {
+		position: relative;
+		display: grid;
+		gap: 0.25rem;
+		padding: 0.75rem;
+		background: var(--paper);
+		border-radius: 2px;
+		box-shadow: 0 1px 0 rgb(0 0 0 / 0.2);
+	}
+	.ticket.interruption {
+		box-shadow: inset 4px 0 0 var(--alarm);
+	}
+	.id {
+		color: var(--muted);
+		font-size: 0.75rem;
+	}
+	.ticket-title {
+		font-weight: 700;
+		line-height: 1.3;
+	}
+	.meta {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		color: var(--muted);
+		font-size: 0.875rem;
+	}
+	.points {
+		display: inline-grid;
+		place-items: center;
+		min-width: 1.6rem;
+		height: 1.6rem;
+		border-radius: 999px;
+		background: var(--wall);
+		color: var(--ink);
+		font-weight: 700;
+		font-size: 0.8125rem;
+	}
+	.flag {
+		justify-self: start;
+		padding: 0 0.4rem;
+		background: var(--alarm);
+		color: #fff;
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+	@media (prefers-color-scheme: dark) {
+		.flag {
+			color: #161c26;
+		}
+	}
+
+	/* Sprints: a real sequence, so numbered. */
+	.sprints {
+		display: grid;
+		gap: 0;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		counter-reset: sprint;
+	}
+	@media (min-width: 48rem) {
+		.sprints {
+			grid-template-columns: repeat(2, 1fr);
+			column-gap: 3rem;
+		}
+	}
+	.sprints li {
+		position: relative;
+		display: grid;
+		grid-template-columns: 3rem 1fr auto;
+		gap: 0 1rem;
+		align-items: baseline;
+		padding: 1rem 0;
+		border-top: 1px solid var(--line);
+		counter-increment: sprint;
+	}
+	.sprints li::before {
+		content: counter(sprint);
+		grid-row: span 2;
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 2rem;
+		line-height: 1;
+		color: var(--cubicle);
+	}
+	.sprints h3 {
+		font-size: 1.375rem;
+	}
+	.sprints p {
+		margin: 0;
+		grid-column: 2;
+		color: var(--muted);
+	}
+	.sprints .tool {
+		grid-column: 3;
+		grid-row: 1;
+		padding: 0.05rem 0.5rem;
+		border: 2px solid var(--ink);
+		color: var(--ink);
+		font-weight: 700;
+		font-size: 0.8125rem;
+		white-space: nowrap;
+	}
+
+	/* Tables */
+	.table-scroll {
+		overflow-x: auto;
+	}
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		min-width: 36rem;
+	}
+	th,
+	td {
+		padding: 0.75rem 1rem 0.75rem 0;
+		border-bottom: 1px solid var(--line);
+		text-align: left;
+		vertical-align: top;
+	}
+	thead th {
+		border-bottom: 2px solid var(--ink);
+		font-size: 0.9375rem;
+	}
+	tbody th {
+		font-weight: 700;
+	}
+
+	.foot {
+		padding-block: 2.5rem 3rem;
+		border-top: 1px solid var(--line);
+		color: var(--muted);
+		font-size: 0.875rem;
+	}
+	.foot p {
+		max-width: 48rem;
+		margin: 0;
+	}
+</style>

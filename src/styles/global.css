@@ -1,0 +1,102 @@
+/* Works in Dev: an office in 2014. Fluorescent-lit walls, cubicle fabric,
+   and hazard tape for the fence between Dev and Ops. */
+:root {
+	--wall: #e3e9e1;
+	--paper: #fbfcfa;
+	--ink: #1b2230;
+	--muted: #4a5568;
+	--cubicle: #3d4f66;
+	--line: #c3ccc0;
+	--tape: #f2c230;
+	--alarm: #b4102a;
+	--dev: #d7e2ea;
+	--ops: #e9e4d6;
+	--box: #b98b57;
+	--box-dark: #8a6337;
+	--display: 'Bricolage Grotesque Variable', 'Arial Narrow', sans-serif;
+	--body: 'Atkinson Hyperlegible', system-ui, sans-serif;
+	--mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+	--max: 72rem;
+	--gutter: clamp(1rem, 4vw, 2.5rem);
+	color-scheme: light;
+}
+
+/* After hours: the lights are off, the pager is on. */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--wall: #161c26;
+		--paper: #1f2733;
+		--ink: #e8ece6;
+		--muted: #aab4c2;
+		--cubicle: #9fb3cc;
+		--line: #344052;
+		--alarm: #ff6b7f;
+		--dev: #1d2a38;
+		--ops: #2a2820;
+		color-scheme: dark;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--wall);
+	color: var(--ink);
+	font-family: var(--body);
+	font-size: 1.0625rem;
+	line-height: 1.6;
+}
+
+h1,
+h2,
+h3 {
+	font-family: var(--display);
+	line-height: 1.05;
+	letter-spacing: -0.02em;
+	margin: 0;
+}
+
+a {
+	color: inherit;
+	text-decoration-thickness: 2px;
+	text-underline-offset: 3px;
+}
+
+a:hover {
+	text-decoration-color: var(--alarm);
+}
+
+:focus-visible {
+	outline: 3px solid var(--alarm);
+	outline-offset: 3px;
+}
+
+code,
+.mono {
+	font-family: var(--mono);
+	font-size: 0.9em;
+}
+
+.wrap {
+	max-width: var(--max);
+	margin: 0 auto;
+	padding-inline: var(--gutter);
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
