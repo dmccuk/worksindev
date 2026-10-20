@@ -128,9 +128,12 @@ export const sprint2: Sprint = {
 				"Undo Tom's price change in ~/darts-shop. Priya says: do not rewrite history. Everyone must still be able to see what happened.",
 			],
 			steps: [
-				{ text: "Find the short hash of Tom's commit: the code at the start of its line.", cmd: 'cd ~/darts-shop\ngit log --oneline' },
 				{
-					text: "Make a new commit that undoes Tom's. Put his hash in place of HASH. --no-edit keeps Git's own message. If Git says 'Please tell me who you are', run the two git config commands it shows first.",
+					text: "Find the short hash of Tom's commit, 'testing discount': the code at the start of its line. Not the first commit: reverting that one undoes the whole shop.",
+					cmd: 'cd ~/darts-shop\ngit log --oneline',
+				},
+				{
+					text: "Make a new commit that undoes Tom's. Put his hash in place of HASH. --no-edit keeps Git's own message. If Git says 'Please tell me who you are', run the two git config commands it shows first. If it says CONFLICT, run git revert --abort and check the hash.",
 					cmd: 'git revert --no-edit HASH',
 					done: async (vms) => (await gitLog(vms.web01, 'darts-shop')).some((c) => c.subject.startsWith('Revert')),
 				},
@@ -139,8 +142,17 @@ export const sprint2: Sprint = {
 			opened: 'And do it properly this time.',
 			thanks: 'Dartboards are £49.99 again. Finance have stopped crying.',
 			check: async (vms) => {
+				const git = `${home(vms)}/darts-shop/.git`;
+				for (const [file, what] of [['REVERT_HEAD', 'git revert'], ['CHERRY_PICK_HEAD', 'git cherry-pick'], ['MERGE_HEAD', 'git merge']]) {
+					if (await vms.web01.readFile(`${git}/${file}`))
+						return {
+							ok: false,
+							message: `A ${what} is half-finished: it stopped on a conflict, and some files may be missing. Run ${what} --abort to go back to your last commit, then try again.`,
+						};
+				}
 				const log = await gitLog(vms.web01, 'darts-shop');
-				if (!log.some((c) => c.subject === 'testing discount'))
+				const tom = log.findIndex((c) => c.subject === 'testing discount');
+				if (tom < 0)
 					return {
 						ok: false,
 						message:
@@ -148,10 +160,16 @@ export const sprint2: Sprint = {
 					};
 				const prices = (await vms.web01.readFile(`${home(vms)}/darts-shop/prices.csv`)) ?? '';
 				if (!prices.includes('dartboard,49.99')) return { ok: false, message: 'prices.csv still has the wrong dartboard price.' };
-				if (!log.some((c) => c.subject.startsWith('Revert')))
+				if (tom === 0)
 					return {
 						ok: false,
-						message: 'The price is right in the file, but there is no commit undoing Tom\'s change. Use git revert so history shows the fix.',
+						message: "The price is right in the file, but the fix isn't committed. Commit it so history shows it, ideally with git revert.",
+					};
+				if (!log.slice(0, tom).some((c) => c.subject.startsWith('Revert')))
+					return {
+						ok: true,
+						message:
+							"Fixed with a new commit, and Tom's is still in the history. Next time try git revert HASH: it writes the fix for you, and its message says which commit it undoes.",
 					};
 				return { ok: true, message: "Tom's change is undone with a new commit, and the history still shows what happened." };
 			},
