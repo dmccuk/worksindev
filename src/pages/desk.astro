@@ -17,10 +17,12 @@ const tools = [
 		<h1 class="sr-only">Your desk at Darts Unlimited</h1>
 		<header class="topbar">
 			<a class="wordmark" href={base}>Works in Dev</a>
-			<p class="sprint-name">Sprint 1: Onboarding <span id="top-burndown" class="top-burndown"></span></p>
+			<p class="sprint-name"><span id="sprint-name">Sprint 1: Onboarding</span> <span id="top-burndown" class="top-burndown"></span></p>
 			<div class="top-actions">
-				<button type="button" class="link" id="reset-layout">Reset layout</button>
-				<button type="button" class="link" id="restart">Restart sprint</button>
+				<label class="sr-only" for="sprint-picker">Sprint</label>
+				<select id="sprint-picker" hidden></select>
+				<button type="button" class="link layout-reset" id="reset-layout">Reset layout</button>
+				<button type="button" class="danger" id="restart">Reset sprint</button>
 			</div>
 		</header>
 
@@ -59,6 +61,7 @@ const tools = [
 				<section class="panel" id="panel-ticket" aria-labelledby="h-ticket">
 					<header class="panel-head">
 						<h2 id="h-ticket">Ticket</h2>
+						<button type="button" class="stuck" id="stuck" hidden>Stuck?</button>
 						<button type="button" class="max" data-maximise aria-pressed="false">Maximise</button>
 					</header>
 					<div class="panel-body" id="ticket-body"></div>
@@ -93,10 +96,10 @@ const tools = [
 						<ul class="tools">
 							{
 								tools.map((t) => (
-									<li class:list={{ locked: t.sprint > 1 }}>
+									<li data-unlocks={t.sprint}>
 										<strong>{t.name}</strong>
 										<span>{t.what}</span>
-										<span class="unlock">{t.sprint > 1 ? `Sprint ${t.sprint}` : 'In use'}</span>
+										<span class="unlock" />
 									</li>
 								))
 							}
@@ -108,7 +111,7 @@ const tools = [
 	</div>
 
 	<dialog id="clock-in" aria-labelledby="clock-in-title">
-		<p class="eyebrow-time">Monday, 9:00am</p>
+		<p class="eyebrow-time" id="clock-in-time">Monday, 9:00am</p>
 		<h2 id="clock-in-title">First day at Darts Unlimited</h2>
 		<p id="clock-in-text">
 			You're the new junior operations engineer. Your tickets are in the Jeera queue, your manager is in chat, and you'll
@@ -136,19 +139,19 @@ const tools = [
 
 	<dialog id="review-dialog" aria-labelledby="review-title">
 		<h2 id="review-title">Sprint review and retro</h2>
-		<p>Derek wants to know what you learned. Answer all three to finish the sprint.</p>
+		<p id="review-intro">Derek wants to know what you learned.</p>
 		<form id="retro-form"></form>
 		<div id="promotion" hidden>
-			<h2>Promoted: your first stripe</h2>
+			<h2 id="promotion-title">Promoted</h2>
 			<div class="stripe" aria-hidden="true"></div>
-			<p>Sprint 1 done. You are now officially part of operations. Derek has already forgotten your name.</p>
+			<p>Sprint done. You are now officially part of operations. Derek has already forgotten your name.</p>
 			<h3>Real-world translation</h3>
 			<table>
 				<tbody id="translation"></tbody>
 			</table>
+			<div id="next-sprint"></div>
 			<p>
-				Sprint 2, <strong>Who changed prod?</strong>, brings version control and GitBit. It's being built now. Want more
-				Linux in the meantime? Try <a href="https://dmccuk.github.io/learndevops/units/l1/">unit L1 on learndevops</a>.
+				Want more Linux practice? Try <a href="https://dmccuk.github.io/learndevops/units/l1/">unit L1 on learndevops</a>.
 			</p>
 		</div>
 		<button type="button" class="link" id="review-close">Close</button>
@@ -207,6 +210,96 @@ const tools = [
 	}
 	.topbar .link {
 		color: inherit;
+	}
+	.top-actions {
+		align-items: center;
+	}
+	.danger {
+		padding: 0.3rem 0.75rem;
+		border: 0;
+		border-radius: 3px;
+		background: var(--alarm);
+		color: #fff;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.danger:hover {
+		background: #8e0c21;
+	}
+	#sprint-picker {
+		padding: 0.25rem 0.4rem;
+		border-radius: 3px;
+		font: inherit;
+	}
+	.stuck {
+		margin-left: auto;
+		padding: 0.1rem 0.6rem;
+		border: 0;
+		border-radius: 3px;
+		background: var(--tape);
+		color: #1b2230;
+		font: inherit;
+		font-size: 0.875rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.stuck:disabled {
+		opacity: 0.7;
+		cursor: progress;
+	}
+	.stuck:not([hidden]) + .max {
+		margin-left: 0;
+	}
+	#ticket-body :global(.coach) {
+		margin-top: 1rem;
+	}
+	#ticket-body :global(.coach:empty) {
+		display: none;
+	}
+	#ticket-body :global(.coach) {
+		padding: 0.75rem 1rem;
+		border-left: 4px solid var(--tape);
+		background: var(--wall);
+	}
+	#ticket-body :global(.coach h4) {
+		font-family: var(--body);
+		font-size: 0.9375rem;
+		letter-spacing: 0;
+	}
+	#ticket-body :global(.coach .steps) {
+		margin: 0.5rem 0 0;
+		padding-left: 1.25rem;
+	}
+	#ticket-body :global(.coach li) {
+		margin-bottom: 0.5rem;
+	}
+	#ticket-body :global(.coach li.done) {
+		color: var(--muted);
+	}
+	#ticket-body :global(.coach li.current .step-text) {
+		font-weight: 700;
+	}
+	#ticket-body :global(.coach .step-text) {
+		margin: 0;
+	}
+	#ticket-body :global(.coach .cmd) {
+		margin: 0.3rem 0 0;
+		padding: 0.4rem 0.6rem;
+		background: #10161f;
+		color: #dfe6dd;
+		font-family: var(--mono);
+		font-size: 0.875rem;
+		white-space: pre-wrap;
+		user-select: all;
+	}
+	#ticket-body :global(.coach .more) {
+		margin: 0.25rem 0 0;
+		color: var(--muted);
+		font-size: 0.875rem;
+	}
+	#next-sprint :global(.btn) {
+		margin-bottom: 1rem;
 	}
 
 	.workspace,
@@ -660,7 +753,7 @@ const tools = [
 		.stack:not(:has(.panel[data-active])) {
 			display: none;
 		}
-		.top-actions {
+		.layout-reset {
 			display: none;
 		}
 	}
