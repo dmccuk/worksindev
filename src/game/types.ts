@@ -46,6 +46,12 @@ export interface Ticket {
 	choices?: { label: string; result: CheckResult }[];
 	/** Extra chat when the player asks the reporter for help */
 	ask?: { label: string; reply: string[] };
+	/**
+	 * Redoes this ticket's work when the servers start fresh, so later tickets
+	 * still find it after a refresh. Shell, by server name, run as root after
+	 * setup, with $P set to the player.
+	 */
+	restore?: Record<string, string>;
 }
 
 export interface RetroQuestion {
