@@ -93,6 +93,10 @@ const tools = [
 						<button type="button" class="max" data-maximise aria-pressed="false">Maximise</button>
 					</header>
 					<div class="panel-body">
+						<section class="gitbit" id="gitbit" aria-labelledby="gitbit-title" hidden>
+							<h3 id="gitbit-title" class="gitbit-title"><span class="gitbit-logo">GitBit</span> <span id="gitbit-repo"></span></h3>
+							<div id="gitbit-body" aria-live="polite"></div>
+						</section>
 						<ul class="tools">
 							{
 								tools.map((t) => (
@@ -144,7 +148,7 @@ const tools = [
 		<div id="promotion" hidden>
 			<h2 id="promotion-title">Promoted</h2>
 			<div class="stripe" aria-hidden="true"></div>
-			<p>Sprint done. You are now officially part of operations. Derek has already forgotten your name.</p>
+			<p id="promotion-text"></p>
 			<h3>Real-world translation</h3>
 			<table>
 				<tbody id="translation"></tbody>
@@ -297,6 +301,68 @@ const tools = [
 		margin: 0.25rem 0 0;
 		color: var(--muted);
 		font-size: 0.875rem;
+	}
+	/* GitBit: a parody, so it looks like nothing real. */
+	.gitbit {
+		margin-bottom: 1rem;
+		border: 2px solid #5b3fa8;
+		border-radius: 4px;
+		overflow: hidden;
+	}
+	.gitbit-title {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+		margin: 0;
+		padding: 0.4rem 0.6rem;
+		background: #5b3fa8;
+		color: #fff;
+		font-family: var(--body);
+		font-size: 0.9375rem;
+		letter-spacing: 0;
+	}
+	.gitbit-logo {
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 1.0625rem;
+	}
+	#gitbit-body {
+		padding: 0.5rem 0.6rem;
+		font-size: 0.875rem;
+	}
+	#gitbit-body :global(p) {
+		margin: 0 0 0.4rem;
+	}
+	#gitbit-body :global(ol) {
+		margin: 0 0 0.6rem;
+		padding: 0;
+		list-style: none;
+	}
+	#gitbit-body :global(li) {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 0 0.5rem;
+		padding: 0.25rem 0;
+		border-bottom: 1px solid var(--line);
+	}
+	#gitbit-body :global(.hash) {
+		grid-row: span 2;
+		color: #5b3fa8;
+		font-family: var(--mono);
+		font-size: 0.8125rem;
+	}
+	@media (prefers-color-scheme: dark) {
+		#gitbit-body :global(.hash) {
+			color: #c3b2f5;
+		}
+	}
+	#gitbit-body :global(.who) {
+		color: var(--muted);
+		font-size: 0.8125rem;
+	}
+	#gitbit-body :global(.files) {
+		font-family: var(--mono);
+		font-size: 0.8125rem;
 	}
 	#next-sprint :global(.btn) {
 		margin-bottom: 1rem;

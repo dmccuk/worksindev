@@ -26,6 +26,8 @@ export interface VMOptions {
 	password: string;
 	/** Lines for /etc/hosts, so servers can reach each other by name */
 	hosts: string;
+	/** Files copied into the VM before setup runs: path to base64 content */
+	files?: Record<string, string>;
 	onStatus: (text: string) => void;
 }
 
@@ -190,6 +192,9 @@ EOF
 echo '. ~/.bashrc' > /home/$P/.bash_profile
 chown "$P:$P" /home/$P/.bashrc /home/$P/.bash_profile
 `;
+		for (const [path, b64] of Object.entries(opts.files ?? {})) {
+			await emulator.create_file(path, Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
+		}
 		await emulator.create_file('/tmp/.desk-setup.sh', new TextEncoder().encode(account + opts.setup));
 		this.fit?.fit();
 		const size = term ? `stty cols ${term.cols} rows ${term.rows}; ` : '';

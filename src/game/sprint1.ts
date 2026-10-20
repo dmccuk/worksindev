@@ -252,7 +252,7 @@ export const sprint1: Sprint = {
 				},
 				{ text: 'Log in to web02. Your prompt changes to show you are on web02.', cmd: 'ssh web02' },
 				{
-					text: "On web02, move the file into nginx's config folder, replacing the broken one.",
+					text: "On web02, move the file into nginx's config folder, replacing the broken one. Want a backup of the old file? Keep it outside that folder: nginx loads every .conf file in it.",
 					cmd: 'sudo mv darts.conf /etc/nginx/http.d/darts.conf',
 					done: async (vms) => (await vms.web02.readFile('/etc/nginx/http.d/darts.conf')) === FIXED_NGINX,
 				},
@@ -270,7 +270,15 @@ export const sprint1: Sprint = {
 			thanks: "It's back! I told the board it was a 'cyber incident'.",
 			check: async (vms) => {
 				const state = await readState(vms.web02, '/var/lib/desk/web.state', 'down');
-				if (state === 'up') return { ok: true, message: 'web02 is serving the shop again.' };
+				// nginx loads every .conf in http.d, so a backup left there is still live.
+				const confs = ((await vms.web02.readFile('/var/lib/desk/nginx.confs')) ?? '').trim().split(/\s+/);
+				const extra = confs.filter((c) => c !== 'darts.conf' && c !== 'none');
+				if (extra.length)
+					return {
+						ok: false,
+						message: `${state === 'up' ? 'The site is up, but n' : 'N'}ginx loads every .conf file in /etc/nginx/http.d, so ${extra.join(' and ')} is live too. That is why nginx warns about a conflicting server name, and why the old file's errors still matter. Move it out of that folder, or rename it to end in .bak, then restart nginx.`,
+					};
+				if (state === 'up') return { ok: true, message: 'web02 is serving the shop again, from one clean config.' };
 				const conf = (await vms.web02.readFile('/etc/nginx/http.d/darts.conf')) ?? '';
 				if (conf.includes('lisen'))
 					return {
@@ -321,11 +329,16 @@ export const sprint1: Sprint = {
 		['ssh, scp', 'How you log in to and copy files between servers, everywhere.'],
 		[
 			'rc-service nginx restart',
-			'Alpine Linux uses OpenRC. On Ubuntu and Red Hat, the same job is systemctl restart nginx.',
+			'Alpine Linux uses OpenRC (service nginx restart works too). On Ubuntu and Red Hat, the same job is systemctl restart nginx.',
+		],
+		[
+			'nginx -t and the include folder',
+			'Test before you restart. nginx loads every .conf file in its include folder, so keep backups somewhere else.',
 		],
 		['A config file on one laptop', 'A real, common cause of "works in dev". Sprint 2 brings version control.'],
 	],
-	next: "Sprint 2, Who changed prod?, brings version control and GitBit.",
+	next: 'Sprint 2, Who changed prod?, brings version control and GitBit.',
+	promotion: 'You are now officially part of operations. Derek has already forgotten your name.',
 };
 
 async function sandraState(vm: import('./vm').GameVM): Promise<'gone' | 'locked' | 'unchanged' | 'reset'> {
@@ -466,6 +479,11 @@ while :; do
     done
   } 3<>/dev/tcp/127.0.0.1/80 2>/dev/null
   if [ "$s" != "$last" ]; then echo "$s" > /var/lib/desk/web.state; last=$s; fi
+  # Which .conf files nginx will load (it loads every one in http.d).
+  confs=
+  for f in /etc/nginx/http.d/*.conf; do [ -e "$f" ] && confs="$confs \${f##*/}"; done
+  confs=\${confs# }
+  if [ "$confs" != "$lastconfs" ]; then echo "\${confs:-none}" > /var/lib/desk/nginx.confs; lastconfs=$confs; fi
   read -t 2 -u 9 _
 done
 EOF

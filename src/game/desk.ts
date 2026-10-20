@@ -3,6 +3,7 @@
  * and tools. Progress is saved in this browser only (see storage.ts).
  */
 import { initLayout, resetLayout } from './layout';
+import { gitFiles, gitLog } from './sprint2';
 import { sprints } from './sprints';
 import { clearSprint, loadGame, loadSprint, saveGame, saveSprint, type SprintProgress } from './storage';
 import type { CheckResult, Person, Ticket, VMs } from './types';
@@ -26,6 +27,35 @@ const el = (tag: string, cls?: string, text?: string) => {
 	if (text !== undefined) e.textContent = text;
 	return e;
 };
+
+/** The GitBit panel: shows what has been pushed to the gitbit server. */
+function startGitBit(vm: GameVM, user: string) {
+	$('#gitbit').hidden = false;
+	$('#gitbit-repo').textContent = `${user} / darts-shop`;
+	const body = $('#gitbit-body');
+	let last = '';
+	const refresh = async () => {
+		const [log, files] = await Promise.all([gitLog(vm, 'darts-shop'), gitFiles(vm, 'darts-shop')]);
+		const key = JSON.stringify([log, files]);
+		if (key === last) return;
+		last = key;
+		body.replaceChildren();
+		if (!log.length) {
+			body.append(el('p', '', 'This repository is empty. Push to it from web01 to see your commits here.'));
+			return;
+		}
+		body.append(el('p', '', `${log.length} ${log.length === 1 ? 'commit' : 'commits'} on main`));
+		const ol = el('ol');
+		for (const c of log) {
+			const li = el('li');
+			li.append(el('span', 'hash', c.hash.slice(0, 7)), el('span', '', c.subject), el('span', 'who', c.author));
+			ol.append(li);
+		}
+		body.append(ol, el('p', 'files', `Files: ${files.join(', ')}`));
+	};
+	void refresh();
+	setInterval(() => void refresh(), 3000);
+}
 
 export function startDesk() {
 	const root = $('.workspace');
@@ -345,6 +375,7 @@ export function startDesk() {
 		const promo = $('#promotion');
 		promo.hidden = false;
 		$('#promotion-title').textContent = `Promoted: stripe ${sprint.number}`;
+		$('#promotion-text').textContent = `Sprint ${sprint.number} done. ${sprint.promotion}`;
 		const tbody = $('#translation');
 		tbody.replaceChildren();
 		for (const [a, b] of sprint.translation) {
@@ -435,6 +466,7 @@ export function startDesk() {
 						name: s.name,
 						ip: s.ip,
 						setup: s.setup,
+						files: s.files,
 						user,
 						password: PASSWORD,
 						hosts,
@@ -443,6 +475,7 @@ export function startDesk() {
 				),
 			);
 			vms[main.name].focus();
+			if (vms.gitbit) startGitBit(vms.gitbit, user);
 		} catch {
 			// The status line already says what went wrong.
 		}

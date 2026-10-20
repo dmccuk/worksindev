@@ -63,6 +63,8 @@ export interface ServerSpec {
 	setup: string;
 	/** Shown in the terminal panel. Other servers run in the background. */
 	terminal?: boolean;
+	/** Files copied into the VM before setup runs: path to base64 content */
+	files?: Record<string, string>;
 }
 
 export interface Sprint {
@@ -76,6 +78,8 @@ export interface Sprint {
 	translation: [string, string][];
 	/** Shown after promotion */
 	next: string;
+	/** One line under the promotion heading */
+	promotion: string;
 }
 
 /** Reads a state file a VM process writes, waiting a few seconds for it to change from `busy`. */
