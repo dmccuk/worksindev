@@ -25,6 +25,21 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Fetch the in-browser VM image
+        # The Linux image is built and released by the learndevops repo.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(gh release list -R dmccuk/learndevops --limit 50 --json tagName --jq '[.[] | select(.tagName | startswith("browser-vm-"))][0].tagName // ""')
+          if [ -z "$TAG" ]; then
+            echo "No browser-vm release found; the terminal will show a load error."
+            exit 0
+          fi
+          echo "Using $TAG"
+          gh release download "$TAG" -R dmccuk/learndevops --pattern browser-vm.tar --dir "$RUNNER_TEMP"
+          mkdir -p public/vm
+          tar -xf "$RUNNER_TEMP/browser-vm.tar" -C public/vm
+          du -sh public/vm
       - run: npm run build
       - name: Upload the site
         if: github.ref == 'refs/heads/main'

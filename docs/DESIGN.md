@@ -108,9 +108,15 @@ Panels resize by dragging their borders, and any panel can be maximised and rest
 
 ## First version
 
-1. Home page. (Done in the first commit.)
-2. The worker screen with resizable panels, the queue and the terminal.
-3. Sprint 1 playable end to end, with check scripts.
+1. Home page. (Done.)
+2. The worker screen at `/desk/` with resizable panels, the queue and the terminal. (Done.)
+3. Sprint 1 playable end to end, with checks. (Done.)
+
+Known limits of the in-browser VM, found while building sprint 1:
+
+- `du` reports almost every file as 1 KB (the emulator's filesystem does not report disk blocks), so hints use `find -size` and `ls -lhS`.
+- A file deleted while a program is reading it loses its contents at once, unlike real Linux. Setup scripts delete themselves only after they finish.
+- After a panel is resized, Linux still uses the terminal width from start-up, so very long lines may wrap oddly. TODO: send the new size to the VM.
 
 Then judge whether it is fun before building sprint 2 and GitBit.
 

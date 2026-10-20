@@ -102,10 +102,10 @@ const tools = [
 		</section>
 
 		<section class="cta wrap" aria-label="Get started">
-			<p class="status"><strong>Sprint 1 is being built.</strong> Your first day starts soon.</p>
+			<a class="clock-in" href={`${import.meta.env.BASE_URL}desk/`}>Clock in for sprint 1</a>
 			<p>
-				The game runs real Linux in your browser. <a href={`${LEARNDEVOPS}playground/`}>Try the same terminal now</a>, or
-				learn it straight at <a href={LEARNDEVOPS}>learndevops.co.uk</a>.
+				Six tickets, a real Linux server in your browser, and a manager who wants it done by Friday. Best on a laptop or
+				desktop. Sprints 2 to 8 are being built.
 			</p>
 		</section>
 
@@ -379,9 +379,26 @@ const tools = [
 		max-width: 40rem;
 		margin: 0;
 	}
-	.status {
-		margin-bottom: 0.5rem !important;
-		font-size: 1.25rem;
+	.clock-in {
+		display: inline-block;
+		margin-bottom: 1rem;
+		padding: 0.75rem 1.5rem;
+		border-radius: 3px;
+		background: var(--alarm);
+		color: #fff;
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 1.375rem;
+		text-decoration: none;
+	}
+	.clock-in:hover {
+		background: var(--ink);
+		color: var(--wall);
+	}
+	@media (prefers-color-scheme: dark) {
+		.clock-in {
+			color: #161c26;
+		}
 	}
 
 	.band {

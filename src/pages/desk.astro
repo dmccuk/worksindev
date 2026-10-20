@@ -1,0 +1,723 @@
+---
+import Base from '../layouts/Base.astro';
+
+const base = import.meta.env.BASE_URL;
+const tools = [
+	{ name: 'Jeera', what: 'Ticket queue and sprints', sprint: 1 },
+	{ name: 'GitBit', what: 'Hosts your Git repositories', sprint: 2 },
+	{ name: 'Jonkins', what: 'Builds, tests and deploys code', sprint: 3 },
+	{ name: 'Ansibubble', what: 'Configures many servers at once', sprint: 5 },
+	{ name: 'Dockle', what: 'Packages apps into containers', sprint: 6 },
+	{ name: 'Naggios', what: 'Monitoring and alerts', sprint: 7 },
+];
+---
+
+<Base title="Your desk: Works in Dev" description="Sprint 1 at Darts Unlimited. Work the ticket queue on a real Linux server in your browser.">
+	<div class="desk">
+		<h1 class="sr-only">Your desk at Darts Unlimited</h1>
+		<header class="topbar">
+			<a class="wordmark" href={base}>Works in Dev</a>
+			<p class="sprint-name">Sprint 1: Onboarding <span id="top-burndown" class="top-burndown"></span></p>
+			<div class="top-actions">
+				<button type="button" class="link" id="reset-layout">Reset layout</button>
+				<button type="button" class="link" id="restart">Restart sprint</button>
+			</div>
+		</header>
+
+		<nav class="tabs" aria-label="Panels">
+			<button type="button" data-tab="panel-queue" aria-selected="true">Queue</button>
+			<button type="button" data-tab="panel-ticket">Ticket</button>
+			<button type="button" data-tab="panel-terminal">Terminal</button>
+			<button type="button" data-tab="panel-chat">Chat</button>
+			<button type="button" data-tab="panel-tools">Tools</button>
+		</nav>
+
+		<main class="workspace" data-split="main" data-sizes="22,48,30" data-vm-base={`${base}vm/`}>
+			<section class="panel" id="panel-queue" aria-labelledby="h-queue">
+				<header class="panel-head">
+					<h2 id="h-queue">Jeera: sprint 1</h2>
+					<button type="button" class="max" data-maximise aria-pressed="false">Maximise</button>
+				</header>
+				<div class="panel-body queue">
+					<div class="burndown">
+						<label for="burndown">Burndown</label>
+						<progress id="burndown" value="0" max="1"></progress>
+						<p id="burndown-text"></p>
+					</div>
+					<button type="button" class="btn review" id="review" hidden>Go to sprint review</button>
+					<h3 class="col-head">To do <span id="count-todo"></span></h3>
+					<ul class="cards" id="col-todo"></ul>
+					<h3 class="col-head">In progress <span id="count-doing"></span></h3>
+					<ul class="cards" id="col-doing"></ul>
+					<h3 class="col-head">Done <span id="count-done"></span></h3>
+					<ul class="cards" id="col-done"></ul>
+				</div>
+			</section>
+			<div role="separator" aria-label="Resize queue"></div>
+
+			<div class="stack" data-split="centre" data-direction="column" data-sizes="42,58">
+				<section class="panel" id="panel-ticket" aria-labelledby="h-ticket">
+					<header class="panel-head">
+						<h2 id="h-ticket">Ticket</h2>
+						<button type="button" class="max" data-maximise aria-pressed="false">Maximise</button>
+					</header>
+					<div class="panel-body" id="ticket-body"></div>
+				</section>
+				<div role="separator" aria-label="Resize ticket and terminal"></div>
+				<section class="panel dark" id="panel-terminal" aria-labelledby="h-term">
+					<header class="panel-head">
+						<h2 id="h-term">Terminal: web01</h2>
+						<p class="term-status" id="term-status" role="status"></p>
+						<button type="button" class="max" data-maximise aria-pressed="false">Maximise</button>
+					</header>
+					<div class="term" id="term"></div>
+				</section>
+			</div>
+			<div role="separator" aria-label="Resize centre and chat"></div>
+
+			<div class="stack" data-split="right" data-direction="column" data-sizes="62,38">
+				<section class="panel" id="panel-chat" aria-labelledby="h-chat">
+					<header class="panel-head">
+						<h2 id="h-chat">Chat</h2>
+						<button type="button" class="max" data-maximise aria-pressed="false">Maximise</button>
+					</header>
+					<ol class="panel-body chat" id="chat-log" role="log" aria-live="polite"></ol>
+				</section>
+				<div role="separator" aria-label="Resize chat and tools"></div>
+				<section class="panel" id="panel-tools" aria-labelledby="h-tools">
+					<header class="panel-head">
+						<h2 id="h-tools">Tools</h2>
+						<button type="button" class="max" data-maximise aria-pressed="false">Maximise</button>
+					</header>
+					<div class="panel-body">
+						<ul class="tools">
+							{
+								tools.map((t) => (
+									<li class:list={{ locked: t.sprint > 1 }}>
+										<strong>{t.name}</strong>
+										<span>{t.what}</span>
+										<span class="unlock">{t.sprint > 1 ? `Sprint ${t.sprint}` : 'In use'}</span>
+									</li>
+								))
+							}
+						</ul>
+					</div>
+				</section>
+			</div>
+		</main>
+	</div>
+
+	<dialog id="clock-in" aria-labelledby="clock-in-title">
+		<p class="eyebrow-time">Monday, 9:00am</p>
+		<h2 id="clock-in-title">First day at Darts Unlimited</h2>
+		<p id="clock-in-text">
+			You're the new junior operations engineer. Your tickets are in the Jeera queue, your manager is in chat, and you're
+			logged in to web01, a real Linux server running in this browser tab. Your password is <code>learner</code>.
+		</p>
+		<p class="small">The first start downloads about 25 MB. Drag panel borders to resize them, or maximise any panel.</p>
+		<button type="button" class="btn" id="clock-in-button" autofocus>Clock in</button>
+	</dialog>
+
+	<dialog id="review-dialog" aria-labelledby="review-title">
+		<h2 id="review-title">Sprint review and retro</h2>
+		<p>Derek wants to know what you learned. Answer all three to finish the sprint.</p>
+		<form id="retro-form"></form>
+		<div id="promotion" hidden>
+			<h2>Promoted: your first stripe</h2>
+			<div class="stripe" aria-hidden="true"></div>
+			<p>Sprint 1 done. You are now officially part of operations. Derek has already forgotten your name.</p>
+			<h3>Real-world translation</h3>
+			<table>
+				<tbody id="translation"></tbody>
+			</table>
+			<p>
+				Sprint 2, <strong>Who changed prod?</strong>, brings version control and GitBit. It's being built now. Want more
+				Linux in the meantime? Try <a href="https://dmccuk.github.io/learndevops/units/l1/">unit L1 on learndevops</a>.
+			</p>
+		</div>
+		<button type="button" class="link" id="review-close">Close</button>
+	</dialog>
+</Base>
+
+<script>
+	import { startDesk } from '../game/desk';
+	startDesk();
+</script>
+
+<style>
+	:global(body) {
+		overflow: hidden;
+	}
+	.desk {
+		--sep: 6px;
+		display: grid;
+		grid-template-rows: auto auto 1fr;
+		height: 100dvh;
+	}
+	.topbar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem 1.5rem;
+		padding: 0.5rem 1rem;
+		background: var(--ink);
+		color: var(--wall);
+	}
+	@media (prefers-color-scheme: dark) {
+		.topbar {
+			background: #0c1118;
+			color: var(--ink);
+		}
+	}
+	.wordmark {
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 1.125rem;
+		text-decoration: none;
+	}
+	.sprint-name {
+		margin: 0;
+		font-weight: 700;
+	}
+	.top-burndown {
+		margin-left: 0.5rem;
+		font-weight: 400;
+		opacity: 0.85;
+	}
+	.top-actions {
+		display: flex;
+		gap: 1rem;
+		margin-left: auto;
+	}
+	.topbar .link {
+		color: inherit;
+	}
+
+	.workspace,
+	.stack {
+		display: grid;
+		min-height: 0;
+		min-width: 0;
+	}
+	.workspace {
+		padding: var(--sep);
+		background: var(--line);
+	}
+	[role='separator'] {
+		position: relative;
+		background: var(--line);
+		touch-action: none;
+		cursor: col-resize;
+	}
+	.stack > [role='separator'] {
+		cursor: row-resize;
+	}
+	[role='separator']::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		margin: auto;
+		width: 2px;
+		height: 2.5rem;
+		border-radius: 2px;
+		background: var(--muted);
+		opacity: 0.5;
+	}
+	.stack > [role='separator']::after {
+		width: 2.5rem;
+		height: 2px;
+	}
+	[role='separator']:hover,
+	[role='separator']:focus-visible,
+	[role='separator'].dragging {
+		background: var(--tape);
+	}
+
+	.panel {
+		display: grid;
+		grid-template-rows: auto 1fr;
+		min-height: 0;
+		min-width: 0;
+		background: var(--paper);
+		border-radius: 3px;
+		overflow: hidden;
+	}
+	.panel.maximised {
+		position: fixed;
+		inset: 3.25rem 0.5rem 0.5rem;
+		z-index: 20;
+		box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.35);
+	}
+	.panel-head {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+		background: var(--cubicle);
+		color: #fff;
+	}
+	@media (prefers-color-scheme: dark) {
+		.panel-head {
+			background: #2b3748;
+		}
+	}
+	.panel-head h2 {
+		margin: 0;
+		font-family: var(--body);
+		font-size: 0.9375rem;
+		letter-spacing: 0;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.max {
+		margin-left: auto;
+		padding: 0.1rem 0.5rem;
+		border: 1px solid rgb(255 255 255 / 0.5);
+		border-radius: 3px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: 0.8125rem;
+		cursor: pointer;
+	}
+	.max:hover {
+		background: rgb(255 255 255 / 0.15);
+	}
+	.panel-body {
+		min-height: 0;
+		overflow: auto;
+		padding: 0.75rem 1rem 1rem;
+	}
+
+	/* Queue */
+	.burndown {
+		display: grid;
+		gap: 0.25rem;
+		margin-bottom: 0.75rem;
+	}
+	.burndown label {
+		font-weight: 700;
+		font-size: 0.875rem;
+	}
+	.burndown progress {
+		width: 100%;
+		height: 0.6rem;
+		accent-color: var(--cubicle);
+	}
+	.burndown p {
+		margin: 0;
+		color: var(--muted);
+		font-size: 0.875rem;
+	}
+	.review {
+		width: 100%;
+		margin-bottom: 0.75rem;
+	}
+	.col-head {
+		margin: 1rem 0 0.4rem;
+		font-family: var(--body);
+		font-size: 0.875rem;
+		letter-spacing: 0;
+		color: var(--muted);
+	}
+	.cards {
+		display: grid;
+		gap: 0.4rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	:global(.card) {
+		display: grid;
+		gap: 0.15rem;
+		width: 100%;
+		padding: 0.5rem 0.6rem;
+		border: 1px solid var(--line);
+		border-radius: 3px;
+		background: var(--wall);
+		color: var(--ink);
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	:global(.card:hover) {
+		border-color: var(--cubicle);
+	}
+	:global(.card.selected) {
+		border-color: var(--ink);
+		box-shadow: inset 0 0 0 1px var(--ink);
+	}
+	:global(.card.interruption) {
+		box-shadow: inset 4px 0 0 var(--alarm);
+	}
+	:global(.card-id) {
+		color: var(--muted);
+		font-family: var(--mono);
+		font-size: 0.75rem;
+	}
+	:global(.card-title) {
+		font-weight: 700;
+		font-size: 0.9375rem;
+		line-height: 1.3;
+	}
+	:global(.card-meta) {
+		display: flex;
+		justify-content: space-between;
+		color: var(--muted);
+		font-size: 0.8125rem;
+	}
+	:global(.points) {
+		display: inline-grid;
+		place-items: center;
+		min-width: 1.4rem;
+		height: 1.4rem;
+		border-radius: 999px;
+		background: var(--paper);
+		color: var(--ink);
+		font-weight: 700;
+		font-size: 0.75rem;
+	}
+	:global(.flag) {
+		justify-self: start;
+		padding: 0 0.4rem;
+		background: var(--alarm);
+		color: #fff;
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+
+	/* Ticket */
+	#ticket-body :global(.empty) {
+		color: var(--muted);
+	}
+	#ticket-body :global(.ticket-title) {
+		margin: 0.15rem 0 0.25rem;
+		font-size: 1.5rem;
+	}
+	#ticket-body :global(.ticket-meta) {
+		margin: 0 0 0.75rem;
+		color: var(--muted);
+		font-size: 0.875rem;
+	}
+	#ticket-body :global(p) {
+		max-width: 60ch;
+		margin: 0 0 0.6rem;
+	}
+	#ticket-body :global(.actions) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin: 1rem 0 0.5rem;
+	}
+	#ticket-body :global(.answer) {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: end;
+		gap: 0.5rem;
+	}
+	#ticket-body :global(.answer label) {
+		flex-basis: 100%;
+		font-weight: 700;
+		font-size: 0.875rem;
+	}
+	#ticket-body :global(.answer input) {
+		min-width: 0;
+		padding: 0.45rem 0.6rem;
+		border: 2px solid var(--cubicle);
+		border-radius: 3px;
+		background: var(--paper);
+		color: var(--ink);
+		font: inherit;
+		font-family: var(--mono);
+	}
+	:global(.result) {
+		margin: 0.5rem 0;
+		font-weight: 700;
+	}
+	:global(.result:empty) {
+		display: none;
+	}
+	:global(.result.pass),
+	:global(.why.pass) {
+		color: #1d6b3a;
+	}
+	:global(.result.fail),
+	:global(.why.fail) {
+		color: var(--alarm);
+	}
+	@media (prefers-color-scheme: dark) {
+		:global(.result.pass),
+		:global(.why.pass) {
+			color: #7fd99a;
+		}
+	}
+	#ticket-body :global(.hints) {
+		margin-top: 1.25rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid var(--line);
+	}
+	#ticket-body :global(.hints h4) {
+		font-family: var(--body);
+		font-size: 0.9375rem;
+		letter-spacing: 0;
+	}
+	#ticket-body :global(.hints ol) {
+		margin: 0.4rem 0;
+		padding-left: 1.25rem;
+	}
+
+	/* Terminal */
+	.dark {
+		background: #10161f;
+	}
+	.dark .panel-head {
+		background: #1f2a38;
+	}
+	.term-status {
+		margin: 0;
+		font-size: 0.8125rem;
+		opacity: 0.85;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.term {
+		min-height: 0;
+		padding: 0.4rem;
+	}
+
+	/* Chat */
+	.chat {
+		display: grid;
+		align-content: start;
+		gap: 0.6rem;
+		margin: 0;
+		list-style: none;
+	}
+	.chat :global(.msg) {
+		padding: 0.5rem 0.65rem;
+		border-radius: 3px;
+		background: var(--wall);
+	}
+	.chat :global(.msg-head) {
+		display: flex;
+		justify-content: space-between;
+		margin: 0;
+		font-size: 0.875rem;
+	}
+	.chat :global(.time) {
+		color: var(--muted);
+		font-family: var(--mono);
+		font-size: 0.75rem;
+	}
+	.chat :global(.msg-text) {
+		margin: 0.15rem 0 0;
+	}
+	.chat :global(pre.msg-text) {
+		padding: 0.4rem 0.5rem;
+		background: var(--paper);
+		font-family: var(--mono);
+		font-size: 0.8125rem;
+		white-space: pre-wrap;
+	}
+	.chat :global(.from-derek) {
+		box-shadow: inset 3px 0 0 var(--alarm);
+	}
+	.chat :global(.from-monitoring) {
+		box-shadow: inset 3px 0 0 var(--tape);
+	}
+
+	/* Tools */
+	.tools {
+		display: grid;
+		gap: 0.4rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.tools li {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 0 0.5rem;
+		padding: 0.4rem 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.tools span:not(.unlock) {
+		grid-column: 1;
+		color: var(--muted);
+		font-size: 0.875rem;
+	}
+	.unlock {
+		grid-column: 2;
+		grid-row: 1 / span 2;
+		align-self: center;
+		font-size: 0.8125rem;
+		font-weight: 700;
+	}
+	.tools .locked strong {
+		color: var(--muted);
+	}
+
+	/* Buttons */
+	:global(.btn) {
+		padding: 0.45rem 0.9rem;
+		border: 2px solid var(--ink);
+		border-radius: 3px;
+		background: var(--ink);
+		color: var(--paper);
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	:global(.btn.secondary) {
+		background: transparent;
+		color: var(--ink);
+	}
+	:global(.btn:disabled) {
+		opacity: 0.6;
+		cursor: progress;
+	}
+	:global(.link) {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		cursor: pointer;
+	}
+
+	/* Tabs, for small screens only */
+	.tabs {
+		display: none;
+	}
+	@media (max-width: 48rem) {
+		.tabs {
+			display: flex;
+			overflow-x: auto;
+			background: var(--cubicle);
+		}
+		.tabs button {
+			flex: 1 0 auto;
+			padding: 0.6rem 0.75rem;
+			border: 0;
+			border-bottom: 3px solid transparent;
+			background: none;
+			color: #fff;
+			font: inherit;
+			font-weight: 700;
+		}
+		.tabs button[aria-selected='true'] {
+			border-bottom-color: var(--tape);
+		}
+		.tabs button:global(.unread)::after {
+			content: '';
+			display: inline-block;
+			width: 0.5rem;
+			height: 0.5rem;
+			margin-left: 0.35rem;
+			border-radius: 50%;
+			background: var(--tape);
+		}
+		.workspace,
+		.stack {
+			display: block;
+			height: 100%;
+		}
+		.workspace {
+			padding: 0;
+		}
+		[role='separator'],
+		.max {
+			display: none;
+		}
+		.panel {
+			display: none;
+			height: 100%;
+			border-radius: 0;
+		}
+		.panel[data-active] {
+			display: grid;
+		}
+		.stack:not(:has(.panel[data-active])) {
+			display: none;
+		}
+		.top-actions {
+			display: none;
+		}
+	}
+
+	/* Dialogs */
+	dialog {
+		max-width: min(40rem, calc(100vw - 2rem));
+		max-height: calc(100dvh - 2rem);
+		padding: 1.5rem;
+		border: 0;
+		border-top: 8px solid var(--tape);
+		border-radius: 3px;
+		background: var(--paper);
+		color: var(--ink);
+	}
+	dialog::backdrop {
+		background: rgb(16 22 31 / 0.7);
+	}
+	dialog h2 {
+		font-size: 1.75rem;
+		margin-bottom: 0.5rem;
+	}
+	.eyebrow-time {
+		margin: 0 0 0.25rem;
+		font-family: var(--mono);
+		color: var(--muted);
+	}
+	.small {
+		color: var(--muted);
+		font-size: 0.9375rem;
+	}
+	#retro-form :global(fieldset) {
+		margin: 0 0 1rem;
+		padding: 0.75rem 1rem;
+		border: 1px solid var(--line);
+		border-radius: 3px;
+	}
+	#retro-form :global(legend) {
+		padding: 0 0.25rem;
+		font-weight: 700;
+	}
+	#retro-form :global(.option) {
+		display: block;
+		padding: 0.15rem 0;
+	}
+	#retro-form :global(.why) {
+		margin: 0.4rem 0 0;
+	}
+	#retro-form :global(.why:empty) {
+		display: none;
+	}
+	#promotion h3 {
+		margin-top: 1rem;
+		font-size: 1.125rem;
+	}
+	.stripe {
+		height: 1.25rem;
+		margin: 0.75rem 0;
+		background: repeating-linear-gradient(-45deg, var(--tape) 0 14px, #1b2230 14px 28px);
+		border-radius: 2px;
+	}
+	#promotion table {
+		border-collapse: collapse;
+		margin: 0.5rem 0 1rem;
+	}
+	#promotion :global(th),
+	#promotion :global(td) {
+		padding: 0.4rem 0.75rem 0.4rem 0;
+		border-bottom: 1px solid var(--line);
+		text-align: left;
+		vertical-align: top;
+	}
+	#review-close {
+		margin-top: 0.5rem;
+	}
+</style>
