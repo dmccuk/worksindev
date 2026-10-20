@@ -36,7 +36,7 @@ export const sprint2: Sprint = {
 	title: 'Who changed prod?',
 	servers: [
 		{ name: 'web01', ip: '10.5.0.21/24', terminal: true, setup: '', files: { '/tmp/darts-shop.tgz': DARTS_SHOP_REPO } },
-		{ name: 'gitbit', ip: '10.5.0.23/24', setup: '' },
+		{ name: 'gitbit', ip: '10.5.0.23/24', setup: '', files: { '/tmp/darts-shop.tgz': DARTS_SHOP_REPO } },
 	],
 	intro: [
 		{
@@ -400,3 +400,44 @@ sprint2.servers[1].setup = `${GIT_COMMON}
 # DART-204: an empty repo on GitBit, owned by the player.
 su "$P" -s /bin/sh -c 'git init -q --bare ~/darts-shop.git'
 `;
+
+// Redo finished work when the servers start fresh after a refresh, so later
+// tickets still find it. Commits use fixed names and dates, so web01 and
+// gitbit build the same commits with the same hashes.
+const asPlayer = (script: string) => `su "$P" -s /bin/sh -c 'sh -e' <<'RESTORE' >/dev/null 2>&1
+u=$(id -un)
+export GIT_AUTHOR_NAME=$u GIT_COMMITTER_NAME=$u GIT_AUTHOR_EMAIL=$u@darts.example GIT_COMMITTER_EMAIL=$u@darts.example
+export GIT_AUTHOR_DATE='2014-10-14T09:00:00+01:00' GIT_COMMITTER_DATE='2014-10-14T09:00:00+01:00'
+${script}
+RESTORE
+`;
+// gitbit has no working copy, so it rebuilds one from the same archive.
+const GITBIT_WORK = `W=/tmp/restore/darts-shop
+[ -d $W ] || { mkdir -p /tmp/restore && tar -xzf /tmp/darts-shop.tgz -C /tmp/restore; }
+cd $W`;
+const REVERT_TOM = 'git revert --no-edit 57e267b';
+const UNTRACK_ENV = `git rm -q --cached .env
+echo .env >> .gitignore
+git add .gitignore
+git commit -qm "Stop tracking .env"`;
+const restore = (id: string, r: Record<string, string>) => {
+	const t = sprint2.tickets.find((x) => x.id === id);
+	if (t) t.restore = r;
+};
+restore('DART-201', {
+	web01: asPlayer(`git config --global user.name "$u"
+git config --global user.email "$u@darts.example"
+cd ~/darts-config && git init -q && git add . && git commit -qm "Add the config files"`),
+});
+restore('DART-203', {
+	web01: asPlayer(`cd ~/darts-shop && ${REVERT_TOM}`),
+	gitbit: asPlayer(`${GITBIT_WORK}\n${REVERT_TOM}`),
+});
+restore('DART-204', {
+	web01: asPlayer('cd ~/darts-shop && git remote add gitbit gitbit:darts-shop.git && git update-ref refs/remotes/gitbit/main HEAD'),
+	gitbit: asPlayer(`${GITBIT_WORK}\ngit push -q ~/darts-shop.git main`),
+});
+restore('DART-206', {
+	web01: asPlayer(`cd ~/darts-shop\n${UNTRACK_ENV}\ngit update-ref refs/remotes/gitbit/main HEAD`),
+	gitbit: asPlayer(`${GITBIT_WORK}\n${UNTRACK_ENV}\ngit push -q ~/darts-shop.git main`),
+});

@@ -459,7 +459,7 @@ export function startDesk() {
 	if (game.username && !usernameProblem(game.username) && progress.chat.length) {
 		renderMessage({
 			from: 'Derek',
-			text: `Morning, ${game.username}. Your tickets are where you left them. The servers were reset to Monday morning, so redo any half-finished work.`,
+			text: `Morning, ${game.username}. Your tickets are where you left them. Brant restored the servers from last night's backup: anything you finished is still there, but redo any half-finished work.`,
 			time: clock(),
 		});
 		void startServers(game.username);
@@ -479,7 +479,7 @@ export function startDesk() {
 						base,
 						name: s.name,
 						ip: s.ip,
-						setup: s.setup,
+						setup: [s.setup, ...tickets.filter((t) => progress.done.includes(t.id)).map((t) => t.restore?.[s.name] ?? '')].join('\n'),
 						files: s.files,
 						user,
 						password: PASSWORD,
