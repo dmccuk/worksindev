@@ -114,7 +114,8 @@ Panels resize by dragging their borders, and any panel can be maximised and rest
 
 Known limits of the in-browser VM, found while building sprint 1:
 
-- `du` reports almost every file as 1 KB (the emulator's filesystem does not report disk blocks), so hints use `find -size` and `ls -lhS`.
+- The VM's main filesystem reports 256 GB free, and `du` shows almost every file on it as 1 KB (the emulator's filesystem does not report disk blocks). Any ticket about disk space needs its own small filesystem: sprint 1 mounts an 8 MB tmpfs on `/var/log`, where `df` and `du` behave like a real server.
+- Checks read files through the emulator, which cannot see inside a tmpfs. For those, a small process in the VM (like `darts-shop` in sprint 1) writes the state to a file the desk can read, using only shell built-ins so it costs almost nothing.
 - A file deleted while a program is reading it loses its contents at once, unlike real Linux. Setup scripts delete themselves only after they finish.
 - After a panel is resized, Linux still uses the terminal width from start-up, so very long lines may wrap oddly. TODO: send the new size to the VM.
 

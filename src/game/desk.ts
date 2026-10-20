@@ -13,6 +13,19 @@ interface Progress {
 	opened: string[];
 	chat: { from: Person; text: string; time: string }[];
 	promoted: boolean;
+	username?: string;
+}
+
+const PASSWORD = 'Welcome1';
+// Accounts that already exist on web01, or belong to the cast.
+const TAKEN = ['root', 'learner', 'sandra', 'kev', 'brant', 'derek', 'priya', 'tom', 'admin', 'nobody', 'sshd', 'daemon', 'bin'];
+
+/** Returns why a username can't be used, or null if it's fine. */
+function usernameProblem(name: string): string | null {
+	if (!/^[a-z][a-z0-9]{1,15}$/.test(name))
+		return 'Use 2 to 16 lowercase letters and numbers, starting with a letter.';
+	if (TAKEN.includes(name)) return `${name} is already taken at Darts Unlimited. Pick another.`;
+	return null;
 }
 
 function loadProgress(): Progress {
@@ -127,8 +140,10 @@ export function startDesk() {
 	};
 
 	// Ticket
-	const result = (r: CheckResult) => {
-		if (selected) lastResult[selected] = r;
+	// Shows a result on ticket `id`, if it is still the one on screen.
+	const result = (id: string, r: CheckResult) => {
+		lastResult[id] = r;
+		if (selected !== id) return;
 		const out = $('#ticket-result');
 		out.textContent = r.message;
 		out.className = `result ${r.ok ? 'pass' : 'fail'}`;
@@ -186,7 +201,7 @@ export function startDesk() {
 				form.addEventListener('submit', (e) => {
 					e.preventDefault();
 					const r = t.answer!.check(input.value);
-					result(r);
+					result(t.id, r);
 					if (r.ok) complete(t);
 				});
 				actions.append(form);
@@ -196,9 +211,11 @@ export function startDesk() {
 				b.setAttribute('type', 'button');
 				b.addEventListener('click', async () => {
 					b.setAttribute('disabled', '');
+					b.textContent = 'Checking…';
 					const r = await t.check!(vm);
 					b.removeAttribute('disabled');
-					result(r);
+					b.textContent = 'Check my work';
+					result(t.id, r);
 					if (r.ok) complete(t);
 				});
 				actions.append(b);
@@ -207,7 +224,7 @@ export function startDesk() {
 				const b = el('button', 'btn secondary', c.label);
 				b.setAttribute('type', 'button');
 				b.addEventListener('click', () => {
-					result(c.result);
+					result(t.id, c.result);
 					if (c.result.ok) complete(t);
 				});
 				actions.append(b);
@@ -345,12 +362,25 @@ export function startDesk() {
 	renderTicket();
 
 	const clockIn = $<HTMLDialogElement>('#clock-in');
-	if (progress.done.length) $('#clock-in-text').textContent = 'Welcome back. Your tickets are where you left them. web01 has been reset to how it was on Monday morning, so redo any half-finished work.';
+	const nameInput = $<HTMLInputElement>('#username');
+	if (progress.username) nameInput.value = progress.username;
+	if (progress.done.length)
+		$('#clock-in-text').textContent =
+			'Welcome back. Your tickets are where you left them. web01 has been reset to how it was on Monday morning, so redo any half-finished work.';
 	clockIn.showModal();
 	clockIn.addEventListener('cancel', (e) => e.preventDefault());
-	$('#clock-in-button').addEventListener('click', async () => {
+	$('#clock-in-form').addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const user = nameInput.value.trim().toLowerCase();
+		const problem = usernameProblem(user);
+		$('#username-error').textContent = problem ?? '';
+		nameInput.setAttribute('aria-invalid', String(Boolean(problem)));
+		if (problem) return;
+		progress.username = user;
+		save();
+		$('#h-term').textContent = `Terminal: ${user}@${sprint.vm.name}`;
 		clockIn.close();
-		if (!progress.chat.length) void sayLater(sprint.intro, 1200);
+		if (!progress.chat.length) void sayLater(sprint.intro.map((m) => ({ ...m, text: m.text.replace('{name}', user) })), 1200);
 		const status = $('#term-status');
 		try {
 			await vm.start($('#term'), {
@@ -358,6 +388,8 @@ export function startDesk() {
 				name: sprint.vm.name,
 				ip: sprint.vm.ip,
 				setup,
+				user,
+				password: PASSWORD,
 				onStatus: (s) => (status.textContent = s),
 			});
 			vm.focus();

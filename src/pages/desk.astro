@@ -111,11 +111,27 @@ const tools = [
 		<p class="eyebrow-time">Monday, 9:00am</p>
 		<h2 id="clock-in-title">First day at Darts Unlimited</h2>
 		<p id="clock-in-text">
-			You're the new junior operations engineer. Your tickets are in the Jeera queue, your manager is in chat, and you're
-			logged in to web01, a real Linux server running in this browser tab. Your password is <code>learner</code>.
+			You're the new junior operations engineer. Your tickets are in the Jeera queue, your manager is in chat, and you'll
+			be logged in to web01, a real Linux server running in this browser tab.
 		</p>
+		<form id="clock-in-form" class="clock-in-form" novalidate>
+			<label for="username">Your username</label>
+			<input
+				id="username"
+				name="username"
+				value="newstarter"
+				autocomplete="off"
+				autocapitalize="none"
+				spellcheck="false"
+				aria-describedby="username-help username-error"
+			/>
+			<p id="username-help" class="small">
+				Lowercase letters and numbers. Your password is <code>Welcome1</code>. Everyone's is. Please don't tell Priya.
+			</p>
+			<p id="username-error" class="error" role="alert"></p>
+			<button type="submit" class="btn" id="clock-in-button">Clock in</button>
+		</form>
 		<p class="small">The first start downloads about 25 MB. Drag panel borders to resize them, or maximise any panel.</p>
-		<button type="button" class="btn" id="clock-in-button" autofocus>Clock in</button>
 	</dialog>
 
 	<dialog id="review-dialog" aria-labelledby="review-title">
@@ -675,6 +691,36 @@ const tools = [
 	.small {
 		color: var(--muted);
 		font-size: 0.9375rem;
+	}
+	.clock-in-form {
+		display: grid;
+		justify-items: start;
+		gap: 0.35rem;
+		margin: 1rem 0;
+	}
+	.clock-in-form label {
+		font-weight: 700;
+	}
+	.clock-in-form input {
+		width: min(16rem, 100%);
+		padding: 0.45rem 0.6rem;
+		border: 2px solid var(--cubicle);
+		border-radius: 3px;
+		background: var(--paper);
+		color: var(--ink);
+		font: inherit;
+		font-family: var(--mono);
+	}
+	.clock-in-form .small {
+		margin: 0;
+	}
+	.error {
+		margin: 0;
+		color: var(--alarm);
+		font-weight: 700;
+	}
+	.error:empty {
+		display: none;
 	}
 	#retro-form :global(fieldset) {
 		margin: 0 0 1rem;

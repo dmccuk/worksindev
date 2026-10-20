@@ -47,7 +47,7 @@ export const sprint = {
 	title: 'Onboarding',
 	vm: { name: 'web01', ip: '10.5.0.21/24' },
 	intro: [
-		{ from: 'Derek', text: "Morning! Welcome to Darts Unlimited. Brant will show you round." } as const,
+		{ from: 'Derek', text: 'Morning, {name}! Welcome to Darts Unlimited. Brant will show you round.' } as const,
 		{
 			from: 'Brant',
 			text: 'Auto-reply: I am out of the office until Monday. For anything urgent, see man.',
@@ -75,7 +75,7 @@ export const tickets: Ticket[] = [
 			'Please set me a new password (anything you like, tell me later) and unlock my account.',
 		],
 		hints: [
-			'Changing another user\'s password needs root. Put sudo in front of the command. Your password is learner.',
+			'Changing another user\'s password needs root. Put sudo in front of the command. Your password is Welcome1.',
 			'The command is passwd, followed by the username: sudo passwd sandra',
 			'Setting a new password also removes the lock.',
 		],
@@ -99,26 +99,33 @@ export const tickets: Ticket[] = [
 		from: 'Monitoring',
 		points: 3,
 		body: [
-			'ALERT: /var/log on web01 is filling up fast.',
-			'Find the biggest file under /var/log and empty it. Do not delete it: the shop app still has it open.',
+			'ALERT: the /var/log filesystem on web01 is over 95% full. When it fills up, the shop stops logging and then stops working.',
+			'Find what is using the space and free it. The shop app is running, so be careful what you delete.',
 		],
 		hints: [
-			'find can list files over a size: find /var/log -size +1M',
-			"ls -lhS lists a folder's files biggest first, with sizes you can read. Try it in the folder you found.",
-			'To empty a file without deleting it: sudo truncate -s 0 <file>',
+			'df -h /var/log shows how big the filesystem is and how full.',
+			'du shows what is using the space. Try: du -a /var/log | sort -n | tail -5 (sizes in KB, biggest last).',
+			'The darts-shop app has its debug log open. Empty the file instead of deleting it: sudo truncate -s 0 <file>. Then run df again.',
 		],
 		opened: 'ALERT acknowledged by you. (Nobody else ever acknowledges alerts.)',
-		thanks: 'RECOVERY: /var/log on web01 is back to normal.',
+		thanks: 'RECOVERY: /var/log on web01 is back below 10%.',
 		check: async (vm) => {
-			const size = await vm.fileSize('/var/log/darts-shop/debug.log');
-			if (size === null)
+			// The darts-shop app (see setup) reports its log's state here every
+			// 2 seconds, so give it a moment to catch up with the player.
+			let state: string | undefined;
+			for (let i = 0; i < 4; i++) {
+				state = (await vm.readFile('/var/lib/desk/debug.log.state'))?.trim();
+				if (state !== 'full') break;
+				await new Promise((r) => setTimeout(r, 1000));
+			}
+			if (state === 'deleted')
 				return {
 					ok: false,
 					message:
-						"debug.log has been deleted. The app still has it open, so the space isn't freed until the app restarts. Reload the page to try again, and empty it instead.",
+						"You deleted debug.log, but run df -h /var/log: it's still full. The darts-shop app still has the file open, so Linux can't free the space until the app stops. Reload the page to put things back, and empty the file instead.",
 				};
-			if (size > 1024) return { ok: false, message: 'The biggest log is still full.' };
-			return { ok: true, message: 'The debug log is empty and the app can still write to it.' };
+			if (state === 'empty') return { ok: true, message: 'The debug log is empty, the space is free, and the app can still write to it.' };
+			return { ok: false, message: '/var/log is still over 95% full.' };
 		},
 	},
 	{
@@ -256,7 +263,8 @@ export const retro: RetroQuestion[] = [
 export const translation = [
 	['Jeera', 'Jira, or any ticket tracker: sprints, story points and queues.'],
 	['passwd, sudo', 'Exactly the same on every Linux server.'],
-	['find, ls -lhS, truncate', 'How sysadmins find and free disk space. On a real server, du -h does this job too.'],
+	['df, du, truncate', 'How sysadmins find and free disk space on every Linux server.'],
+	['A deleted file that is still open', 'Still uses disk space until the program closes it. A classic real-world surprise.'],
 	['ip addr', 'The standard way to see a Linux server\'s addresses.'],
 	['grep and log files', 'How you find out who did what, everywhere.'],
 	['A config file on one laptop', 'A real, common cause of "works in dev". Sprint 2 brings version control.'],
@@ -272,12 +280,35 @@ echo 'sandra:Spring2014' | chpasswd 2>/dev/null
 passwd -l sandra >/dev/null 2>&1
 grep '^sandra:' /etc/shadow | cut -d: -f2 > /var/lib/desk/sandra.hash
 
-# DART-102: a log that is filling the disk, and some that aren't.
+# DART-102: /var/log becomes its own small filesystem, nearly full, with
+# the darts-shop app holding its debug log open.
+mkdir -p /tmp/.oldlog && cp -a /var/log/. /tmp/.oldlog/
+mount -t tmpfs -o size=8m logvol /var/log
+cp -a /tmp/.oldlog/. /var/log/ && rm -rf /tmp/.oldlog
 mkdir -p /var/log/darts-shop
-dd if=/dev/zero of=/var/log/darts-shop/debug.log bs=1024 count=6144 2>/dev/null
+dd if=/dev/zero of=/var/log/darts-shop/debug.log bs=4096 count=1980 2>/dev/null
 for i in 1 2 3 4 5 6 7 8; do echo "10.5.0.$i - - [14/Oct/2014:09:0$i:00] \\"GET /darts HTTP/1.1\\" 200 512" >> /var/log/darts-shop/access.log; done
 echo "[14/Oct/2014 09:01] WARN basket service slow" > /var/log/darts-shop/error.log
 echo "Oct 14 08:59:01 web01 cron: daily backup finished" > /var/log/cron.log
+
+# The darts-shop app keeps debug.log open and tells the desk what state the
+# log is in. It uses only shell built-ins, so it costs almost nothing while
+# it waits (each new program takes about 0.4 s to start in the emulator).
+cat > /usr/local/bin/darts-shop <<'EOF'
+#!/bin/bash
+LOG=/var/log/darts-shop/debug.log
+exec 8>>"$LOG"
+mkfifo /tmp/.darts-shop.tick 2>/dev/null
+exec 9<>/tmp/.darts-shop.tick
+last=
+while :; do
+  if [ ! -e "$LOG" ]; then s=deleted; elif [ -s "$LOG" ]; then s=full; else s=empty; fi
+  if [ "$s" != "$last" ]; then echo "$s" > /var/lib/desk/debug.log.state; last=$s; fi
+  read -t 2 -u 9 _
+done
+EOF
+chmod +x /usr/local/bin/darts-shop
+setsid /usr/local/bin/darts-shop >/dev/null 2>&1 < /dev/null &
 
 # DART-104: the sudo log.
 cat > /var/log/sudo.log <<'EOF'
@@ -291,7 +322,7 @@ Oct 14 09:30:44 web01 sudo: sandra : TTY=pts/1 ; PWD=/home/sandra ; USER=root ; 
 EOF
 
 # DART-106: Kev's build.
-B=/home/learner/builds/darts-shop-1.4
+B=/home/$P/builds/darts-shop-1.4
 mkdir -p $B
 cat > $B/start.sh <<'EOF'
 #!/bin/sh
@@ -312,6 +343,6 @@ echo prod > /tmp/darts-shop.mode
 EOF
 chmod +x $B/start.sh
 echo "Darts Shop 1.4. Run ./start.sh" > $B/README
-chown -R learner:learner /home/learner/builds
+chown -R "$P:$P" /home/$P/builds
 rm -f /tmp/darts-shop.mode
 `;

@@ -17,8 +17,11 @@ export interface VMOptions {
 	name: string;
 	/** Address on the in-browser network, e.g. 10.5.0.21/24 */
 	ip: string;
-	/** Shell script run as root before the player gets the terminal */
+	/** Shell script run as root before the player gets the terminal. $P is the player's username. */
 	setup: string;
+	/** The player's username and password on the VM */
+	user: string;
+	password: string;
 	onStatus: (text: string) => void;
 }
 
@@ -98,9 +101,10 @@ export class GameVM {
 		let scheduled = false;
 		let tail = '';
 		let waitDone: (() => void) | null = null;
+		let waitFor = 'LD-42';
 		emulator.add_listener('serial0-output-byte', (byte) => {
 			tail = (tail + String.fromCharCode(byte)).slice(-64);
-			if (waitDone && tail.includes('LD-42')) {
+			if (waitDone && tail.includes(waitFor)) {
 				const done = waitDone;
 				waitDone = null;
 				done();
@@ -141,8 +145,17 @@ export class GameVM {
 		const run = (cmd: string) =>
 			new Promise<void>((resolve) => {
 				tail = '';
+				waitFor = 'LD-42';
 				waitDone = resolve;
 				type(`${cmd}; echo LD-$((40+2))\n`);
+			});
+		// Types a line and waits until the output contains `text`.
+		const typeUntil = (line: string, text: string) =>
+			new Promise<void>((resolve) => {
+				tail = '';
+				waitFor = text;
+				waitDone = resolve;
+				type(line);
 			});
 
 		await new Promise<void>((resolve, reject) => {
@@ -155,13 +168,26 @@ export class GameVM {
 		await new Promise((r) => setTimeout(r, 200));
 
 		opts.onStatus('Setting up your desk…');
-		await emulator.create_file('/tmp/.desk-setup.sh', new TextEncoder().encode(opts.setup));
+		// Create the player's account, then build the sprint's scenario.
+		const account = `#!/bin/sh
+P=${opts.user}
+adduser -D -s /bin/bash "$P"
+echo "$P:${opts.password}" | chpasswd
+echo "$P ALL=(ALL) ALL" > /etc/sudoers.d/desk-player && chmod 440 /etc/sudoers.d/desk-player
+cat > /home/$P/.bashrc <<'EOF'
+PS1='\\u@\\h:\\w\\$ '
+EOF
+echo '. ~/.bashrc' > /home/$P/.bash_profile
+chown "$P:$P" /home/$P/.bashrc /home/$P/.bash_profile
+`;
+		await emulator.create_file('/tmp/.desk-setup.sh', new TextEncoder().encode(account + opts.setup));
 		fit.fit();
 		await run(
 			`stty cols ${term.cols} rows ${term.rows}; sudo ld-net ${opts.name} ${opts.ip}; ` +
-				`echo learner | sudo -S sh -c 'sh /tmp/.desk-setup.sh; rm -f /tmp/.desk-setup.sh' >/dev/null 2>&1; sudo -k; ` +
-				`PS1='\\u@${opts.name}:\\w\\$ '; cd`,
+				`echo learner | sudo -S sh -c 'sh /tmp/.desk-setup.sh; rm -f /tmp/.desk-setup.sh' >/dev/null 2>&1`,
 		);
+		// Log in as the player. sudo still remembers the password from setup.
+		await typeUntil(`exec sudo -u ${opts.user} -i\n`, `${opts.user}@${opts.name}`);
 
 		quiet = false;
 		term.reset();
