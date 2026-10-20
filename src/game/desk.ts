@@ -408,6 +408,8 @@ export function startDesk() {
 		if (!confirm(`Reset sprint ${sprint.number}? Your tickets, chat and progress for this sprint are cleared, and the servers start fresh.`))
 			return;
 		clearSprint(sprint.number);
+		delete game.username;
+		saveGame(game);
 		location.reload();
 	});
 	const sprintPicker = $<HTMLSelectElement>('#sprint-picker');
@@ -439,12 +441,8 @@ export function startDesk() {
 	if (game.username) nameInput.value = game.username;
 	$('#clock-in-time').textContent = sprint.number === 1 ? 'Monday, 9:00am' : `Sprint ${sprint.number}, Monday, 9:00am`;
 	if (sprint.number > 1) $('#clock-in-title').textContent = `Sprint ${sprint.number}: ${sprint.title}`;
-	if (progress.done.length)
-		$('#clock-in-text').textContent =
-			'Welcome back. Your tickets are where you left them. The servers have been reset to Monday morning, so redo any half-finished work.';
-	clockIn.showModal();
 	clockIn.addEventListener('cancel', (e) => e.preventDefault());
-	$('#clock-in-form').addEventListener('submit', async (e) => {
+	$('#clock-in-form').addEventListener('submit', (e) => {
 		e.preventDefault();
 		const user = nameInput.value.trim().toLowerCase();
 		const problem = usernameProblem(user);
@@ -453,8 +451,24 @@ export function startDesk() {
 		if (problem) return;
 		game.username = user;
 		saveGame(game);
-		$('#h-term').textContent = `Terminal: ${user}@${main.name}`;
 		clockIn.close();
+		void startServers(user);
+	});
+
+	// Coming back to a sprint you've started: skip the clock-in and log straight in.
+	if (game.username && !usernameProblem(game.username) && progress.chat.length) {
+		renderMessage({
+			from: 'Derek',
+			text: `Morning, ${game.username}. Your tickets are where you left them. The servers were reset to Monday morning, so redo any half-finished work.`,
+			time: clock(),
+		});
+		void startServers(game.username);
+	} else {
+		clockIn.showModal();
+	}
+
+	async function startServers(user: string) {
+		$('#h-term').textContent = `Terminal: ${user}@${main.name}`;
 		if (!progress.chat.length) void sayLater(sprint.intro.map((m) => ({ ...m, text: m.text.replace('{name}', user) })), 1200);
 		const status = $('#term-status');
 		const hosts = sprint.servers.map((s) => `${s.ip.split('/')[0]} ${s.name}`).join('\n');
@@ -479,5 +493,5 @@ export function startDesk() {
 		} catch {
 			// The status line already says what went wrong.
 		}
-	});
+	}
 }
