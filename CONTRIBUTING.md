@@ -23,6 +23,7 @@ Each sprint is one file in `src/game/`, for example `sprint2.ts`, listed in `src
 - `servers`: the Linux servers it needs, each with a setup script that runs as root. `$P` is the player's username. One server has the terminal; the rest run in the background on the in-browser network.
 - `tickets`: each with its story, a `check` (or a typed `answer`, or `choices`), and `steps` for the Stuck? coach. A step can have a `done` function so the coach knows the player has already done it.
 - `retro`, `translation`, `intro`, `done`, `next` and `promotion`: the story around the work.
+- A ticket can also have `blockedBy` (other tickets that must be done first), `restore` (shell that redoes its work when the servers start fresh after a refresh) and `onArrive` (shell that runs on a background server when it arrives, such as a colleague pushing a commit).
 
 Things learned the hard way, in `docs/DESIGN.md`:
 

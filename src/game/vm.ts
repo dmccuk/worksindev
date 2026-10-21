@@ -44,6 +44,8 @@ export class GameVM {
 	private emulator?: Emulator;
 	private term?: Terminal;
 	private fit?: FitAddon;
+	private runCmd?: (cmd: string) => Promise<void>;
+	private queue: Promise<void> = Promise.resolve();
 
 	/**
 	 * Starts the VM and resolves when it is ready. With an element, it shows a
@@ -203,6 +205,7 @@ chown "$P:$P" /home/$P/.bashrc /home/$P/.bash_profile
 				`echo learner | sudo -S sh -c 'sh /tmp/.desk-setup.sh; rm -f /tmp/.desk-setup.sh' >/dev/null 2>&1`,
 		);
 		if (!term) {
+			this.runCmd = run;
 			opts.onStatus('');
 			return;
 		}
@@ -229,6 +232,21 @@ chown "$P:$P" /home/$P/.bashrc /home/$P/.bash_profile
 		} catch {
 			return null;
 		}
+	}
+
+	/**
+	 * Runs a script as root on a background server, after anything already
+	 * running. $P is the player's username. Servers with a terminal can't run
+	 * scripts this way: their serial line is the player's terminal.
+	 */
+	exec(script: string): Promise<void> {
+		const go = async () => {
+			if (!this.emulator || !this.runCmd) return;
+			await this.emulator.create_file('/tmp/.desk-exec.sh', new TextEncoder().encode(`P=${this.user}\n${script}`));
+			await this.runCmd(`echo learner | sudo -S sh -c 'sh /tmp/.desk-exec.sh; rm -f /tmp/.desk-exec.sh' >/dev/null 2>&1`);
+		};
+		this.queue = this.queue.then(go, go);
+		return this.queue;
 	}
 
 	refit() {

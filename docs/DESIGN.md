@@ -74,6 +74,22 @@ Blockers: DART-203 is blocked by DART-202 (find the commit before undoing it), D
 | DART-205 | Sandra | 1 | Can I be admin on GitBit? (interruption, after 2 done) | Read access to one repo: least privilege |
 | DART-206 | Priya | 3 | Kev committed a password (after 4 done) | `git rm --cached .env`, `.gitignore`, pushed; `.env` still on web01 |
 
+## Sprint 3 in full: Works in dev
+
+Servers: web01 (terminal) and gitbit. The shop starts as sprint 2 left it, plus Kev's `build.sh`. The player has an SSH key for gitbit, so pushes need no password. Jonkins runs on gitbit: a `post-receive` hook starts `jonkins-build` (`src/game/assets/jonkins-build.sh`) for every push to main. It reads the `Jonkinsfile` (the declarative Jenkinsfile shape: `stage`, `sh`, `environment` with plain values or `credentials('id')`), runs the steps, masks credentials in the console, and writes runs and logs to `/var/lib/desk/jonkins` for the checks and the Jonkins panel.
+
+Blockers: 302 by 301, 303 by 302, and 304 and 306 by 303: each error only shows once the one before it is fixed.
+
+| Ticket | From | Points | Task | Check |
+| --- | --- | --- | --- | --- |
+| DART-301 | Derek | 3 | Set up Jonkins for the shop | A Jonkinsfile with a Build stage is pushed, and Jonkins built it (it fails) |
+| DART-302 | Tom | 2 | Build fails: Permission denied | `build.sh` executable in Git, pushed; no workaround in the Jonkinsfile |
+| DART-303 | Kev | 5 | The build fails, but it works on my machine | `build.conf` committed without the password; the build loads it |
+| DART-304 | Priya | 3 | The build needs the database password | `credentials('darts-db')` in the Jonkinsfile, password nowhere in Git, build green |
+| DART-305 | Sandra | 1 | Can Jonkins email me every build? (interruption, after 2 done) | Email whoever broke it, only on failure |
+| DART-306 | Kev | 3 | Prod is getting dev builds | `DEPLOY_ENV = 'prod'` in the Jonkinsfile, not in the code; console says prod |
+| DART-307 | Derek | 3 | Friday, 4:55pm: who broke the build? (after 6 done) | Tom pushes a rename that breaks the build. Pull, revert his commit, push; build green, his commit still in history |
+
 ## Cast (staff directory)
 
 Extension numbers are port numbers, for people who know.

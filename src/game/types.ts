@@ -54,6 +54,12 @@ export interface Ticket {
 	 * setup, with $P set to the player.
 	 */
 	restore?: Record<string, string>;
+	/**
+	 * Something that happens on the servers when this ticket arrives, such as
+	 * a colleague pushing a commit. Shell, by server name, run as root on
+	 * background servers. Also run at start if it has arrived but isn't done.
+	 */
+	onArrive?: Record<string, string>;
 }
 
 export interface RetroQuestion {
@@ -88,6 +94,8 @@ export interface Sprint {
 	next: string;
 	/** One line under the promotion heading */
 	promotion: string;
+	/** Shell, by server name, run once after the restore scripts when any ticket is done */
+	afterRestore?: Record<string, string>;
 }
 
 /** Reads a state file a VM process writes, waiting a few seconds for it to change from `busy`. */
