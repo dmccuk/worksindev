@@ -168,6 +168,7 @@ export function startDesk() {
 		}
 		const allDone = list.length === tickets.length && list.every((t) => progress.done.includes(t.id));
 		$('#review').hidden = !allDone;
+		$('#review').textContent = progress.promoted ? 'Sprint done: see your promotion' : 'Go to sprint review';
 	};
 
 	// Ticket
@@ -363,6 +364,14 @@ export function startDesk() {
 	// Sprint review: the retro, then promotion.
 	const review = $<HTMLDialogElement>('#review-dialog');
 	$('#review').addEventListener('click', () => {
+		// Passed already: straight to the promotion.
+		if (progress.promoted) {
+			$('#review-intro').textContent = `You passed the sprint ${sprint.number} retro.`;
+			$('#retro-form').hidden = true;
+			review.showModal();
+			showPromotion();
+			return;
+		}
 		const form = $('#retro-form');
 		form.replaceChildren();
 		sprint.retro.forEach((q, qi) => {
@@ -404,7 +413,12 @@ export function startDesk() {
 		if (right !== sprint.retro.length) return;
 		progress.promoted = true;
 		save();
+		renderQueue();
 		form.querySelector('button[type="submit"]')?.remove();
+		showPromotion();
+	});
+	// The promotion, with the way into the next sprint.
+	const showPromotion = () => {
 		const promo = $('#promotion');
 		promo.hidden = false;
 		$('#promotion-title').textContent = `Promoted: stripe ${sprint.number}`;
@@ -432,7 +446,7 @@ export function startDesk() {
 			next.append(el('p', '', `${sprint.next} It's being built now.`));
 		}
 		promo.scrollIntoView({ behavior: 'smooth' });
-	});
+	};
 	$('#review-close').addEventListener('click', () => review.close());
 
 	// Top bar
@@ -488,13 +502,14 @@ export function startDesk() {
 		void startServers(user);
 	});
 
-	// Coming back to a sprint you've started: skip the clock-in and log straight in.
-	if (game.username && !usernameProblem(game.username) && progress.chat.length) {
-		renderMessage({
-			from: 'Derek',
-			text: `Morning, ${game.username}. Your tickets are where you left them. Brant restored the servers from last night's backup: anything you finished is still there, but redo any half-finished work.`,
-			time: clock(),
-		});
+	// Already clocked in before: log straight in. Reset sprint clears the name.
+	if (game.username && !usernameProblem(game.username)) {
+		if (progress.chat.length)
+			renderMessage({
+				from: 'Derek',
+				text: `Morning, ${game.username}. Your tickets are where you left them. Brant restored the servers from last night's backup: anything you finished is still there, but redo any half-finished work.`,
+				time: clock(),
+			});
 		void startServers(game.username);
 	} else {
 		clockIn.showModal();
