@@ -32,6 +32,23 @@ body:
     validations:
       required: true
   - type: dropdown
+    id: sprint
+    attributes:
+      label: Which sprint does it fit?
+      description: Each sprint adds one tool or idea. Pick the closest, or "Not sure".
+      options:
+        - "Not sure"
+        - "1: Onboarding (the shell, users, files, logs)"
+        - "2: Who changed prod? (Git)"
+        - "3: Works in dev (builds, CI, environments)"
+        - "4: The pipeline (tests and deploys)"
+        - "5: Fifty snowflakes (configuration management)"
+        - "6: Dockle all the things (containers)"
+        - "7: 3am (monitoring and on-call)"
+        - "8: Ten deploys a day (everything)"
+    validations:
+      required: false
+  - type: dropdown
     id: era
     attributes:
       label: Roughly when?

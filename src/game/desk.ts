@@ -2,6 +2,7 @@
  * The worker screen: the Jeera queue, the open ticket, the terminal, chat
  * and tools. Progress is saved in this browser only (see storage.ts).
  */
+import { startJonkins } from './jonkins';
 import { initLayout, resetLayout } from './layout';
 import { gitFiles, gitLog } from './sprint2';
 import { sprints } from './sprints';
@@ -188,8 +189,9 @@ export function startDesk() {
 		renderQueue();
 		renderTicket();
 		for (const n of arrived().slice(before)) {
+			for (const [server, script] of Object.entries(n.onArrive ?? {})) void vms[server]?.exec(script);
 			setTimeout(() => {
-				say(n.from, `${n.title}. ${n.body[0]}`);
+				say(n.from, `${n.title}${/[?!.]$/.test(n.title) ? '' : '.'} ${n.body[0]}`);
 				document.querySelector('[data-tab="panel-queue"]')?.classList.add('unread');
 			}, 1500);
 		}
@@ -503,6 +505,8 @@ export function startDesk() {
 		if (!progress.chat.length) void sayLater(sprint.intro.map((m) => ({ ...m, text: m.text.replace('{name}', user) })), 1200);
 		const status = $('#term-status');
 		const hosts = sprint.servers.map((s) => `${s.ip.split('/')[0]} ${s.name}`).join('\n');
+		// Tickets that arrived before a refresh, whose events must happen again.
+		const waitingEvents = arrived().filter((t) => t.onArrive && !progress.done.includes(t.id));
 		try {
 			await Promise.all(
 				sprint.servers.map((s) =>
@@ -510,7 +514,12 @@ export function startDesk() {
 						base,
 						name: s.name,
 						ip: s.ip,
-						setup: [s.setup, ...tickets.filter((t) => progress.done.includes(t.id)).map((t) => t.restore?.[s.name] ?? '')].join('\n'),
+						setup: [
+							s.setup,
+							...tickets.filter((t) => progress.done.includes(t.id)).map((t) => t.restore?.[s.name] ?? ''),
+							progress.done.length ? (sprint.afterRestore?.[s.name] ?? '') : '',
+							...waitingEvents.map((t) => t.onArrive?.[s.name] ?? ''),
+						].join('\n'),
 						files: s.files,
 						user,
 						password: PASSWORD,
@@ -521,6 +530,7 @@ export function startDesk() {
 			);
 			vms[main.name].focus();
 			if (vms.gitbit) startGitBit(vms.gitbit, user);
+			if (vms.gitbit && sprint.number >= 3) startJonkins(vms.gitbit);
 		} catch {
 			// The status line already says what went wrong.
 		}

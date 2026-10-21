@@ -93,6 +93,12 @@ const tools = [
 						<button type="button" class="max" data-maximise aria-pressed="false">Maximise</button>
 					</header>
 					<div class="panel-body">
+						<section class="jonkins" id="jonkins" aria-labelledby="jonkins-title" hidden>
+							<h3 id="jonkins-title" class="jonkins-title"><span class="jonkins-logo">Jonkins</span> darts-shop builds</h3>
+							<ol id="jonkins-runs" class="runs" aria-live="polite"></ol>
+							<h4 id="jonkins-console-title" class="console-title">Console output</h4>
+							<pre id="jonkins-console" class="console" tabindex="0" aria-labelledby="jonkins-console-title"></pre>
+						</section>
 						<section class="gitbit" id="gitbit" aria-labelledby="gitbit-title" hidden>
 							<h3 id="gitbit-title" class="gitbit-title"><span class="gitbit-logo">GitBit</span> <span id="gitbit-repo"></span></h3>
 							<div id="gitbit-body" aria-live="polite"></div>
@@ -299,6 +305,114 @@ const tools = [
 		color: var(--muted);
 		font-size: 0.875rem;
 	}
+	/* Jonkins: a parody too. Status is in words as well as colour. */
+	.jonkins {
+		margin-bottom: 1rem;
+		border: 2px solid #1d5c55;
+		border-radius: 4px;
+		overflow: hidden;
+	}
+	.jonkins-title {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+		margin: 0;
+		padding: 0.4rem 0.6rem;
+		background: #1d5c55;
+		color: #fff;
+		font-family: var(--body);
+		font-size: 0.9375rem;
+		letter-spacing: 0;
+	}
+	.jonkins-logo {
+		font-family: var(--display);
+		font-weight: 800;
+		font-style: italic;
+		font-size: 1.0625rem;
+	}
+	.runs {
+		margin: 0;
+		padding: 0.25rem 0.6rem;
+		list-style: none;
+		max-height: 11rem;
+		overflow: auto;
+		font-size: 0.875rem;
+	}
+	.runs :global(.empty) {
+		padding: 0.25rem 0;
+		color: var(--muted);
+	}
+	.runs :global(.run) {
+		display: grid;
+		grid-template-columns: auto auto 1fr;
+		gap: 0 0.5rem;
+		align-items: baseline;
+		width: 100%;
+		padding: 0.3rem 0.25rem;
+		border: 0;
+		border-bottom: 1px solid var(--line);
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.runs :global(.run.chosen) {
+		background: var(--ops);
+	}
+	.runs :global(.run-n) {
+		font-family: var(--mono);
+		font-weight: 700;
+	}
+	.runs :global(.status) {
+		padding: 0 0.35rem;
+		font-size: 0.75rem;
+		font-weight: 700;
+		color: #fff;
+	}
+	.runs :global(.status.success) {
+		background: #1f6b35;
+	}
+	.runs :global(.status.failure) {
+		background: #b4102a;
+	}
+	.runs :global(.status.running) {
+		background: var(--tape);
+		color: #1b2230;
+	}
+	.runs :global(.run-what) {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-family: var(--mono);
+		font-size: 0.8125rem;
+	}
+	.runs :global(.run-who) {
+		grid-column: 3;
+		color: var(--muted);
+		font-size: 0.8125rem;
+	}
+	.console-title {
+		margin: 0;
+		padding: 0.4rem 0.6rem 0.2rem;
+		font-family: var(--body);
+		font-size: 0.8125rem;
+		letter-spacing: 0;
+	}
+	.console {
+		margin: 0;
+		padding: 0.5rem 0.6rem;
+		max-height: 14rem;
+		overflow: auto;
+		background: #10161f;
+		color: #dfe6dd;
+		font-family: var(--mono);
+		font-size: 0.75rem;
+		line-height: 1.45;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+
 	/* GitBit: a parody, so it looks like nothing real. */
 	.gitbit {
 		margin-bottom: 1rem;

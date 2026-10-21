@@ -348,7 +348,7 @@ export const sprint2: Sprint = {
 };
 
 /** Git setup shared by both servers: a default branch, and the desk's hook in every new repo. */
-const GIT_COMMON = `
+export const GIT_COMMON = `
 mkdir -p /var/lib/desk && chmod 1777 /var/lib/desk
 mkdir -p /usr/share/desk/git-template/hooks
 cat > /usr/share/desk/git-template/hooks/reference-transaction <<'EOF'
@@ -407,7 +407,7 @@ su "$P" -s /bin/sh -c 'git init -q --bare ~/darts-shop.git'
 // Redo finished work when the servers start fresh after a refresh, so later
 // tickets still find it. Commits use fixed names and dates, so web01 and
 // gitbit build the same commits with the same hashes.
-const asPlayer = (script: string) => `su "$P" -s /bin/sh -c 'sh -e' <<'RESTORE' >/dev/null 2>&1
+export const asPlayer = (script: string) => `su "$P" -s /bin/sh -c 'sh -e' <<'RESTORE' >/dev/null 2>&1
 u=$(id -un)
 export GIT_AUTHOR_NAME=$u GIT_COMMITTER_NAME=$u GIT_AUTHOR_EMAIL=$u@darts.example GIT_COMMITTER_EMAIL=$u@darts.example
 export GIT_AUTHOR_DATE='2014-10-14T09:00:00+01:00' GIT_COMMITTER_DATE='2014-10-14T09:00:00+01:00'
@@ -415,11 +415,11 @@ ${script}
 RESTORE
 `;
 // gitbit has no working copy, so it rebuilds one from the same archive.
-const GITBIT_WORK = `W=/tmp/restore/darts-shop
+export const GITBIT_WORK = `W=/tmp/restore/darts-shop
 [ -d $W ] || { mkdir -p /tmp/restore && tar -xzf /tmp/darts-shop.tgz -C /tmp/restore; }
 cd $W`;
-const REVERT_TOM = 'git revert --no-edit 57e267b';
-const UNTRACK_ENV = `git rm -q --cached .env
+export const REVERT_TOM = 'git revert --no-edit 57e267b';
+export const UNTRACK_ENV = `git rm -q --cached .env
 echo .env >> .gitignore
 git add .gitignore
 git commit -qm "Stop tracking .env"`;
