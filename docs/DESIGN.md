@@ -20,6 +20,7 @@ Each level is a sprint. Work arrives in the **Jeera** ticket queue; the player d
 - **Stand-up** opens the sprint: the manager's briefing, the goal, and what's new this sprint.
 - **Tickets** of mixed size, shown as story points: small (1), medium (3), large (5 to 8).
 - **Interruptions** arrive mid-sprint and cannot be refused ("URGENT: printer broken").
+- **Blockers**: some tickets are blocked by another, like a Jira "is blocked by" link. A blocked ticket can be read but not worked, and unlocks with a chat message when the other is done.
 - **The burndown chart** is the progress bar.
 - **Shortcuts come back.** Fix something by hand instead of automating it and the ticket reopens next sprint, and the fence gets taller.
 - **Sprint review** closes the sprint: every committed ticket must be done to be promoted.
@@ -61,6 +62,8 @@ DART-106 is the first build thrown over the fence. It fails because a config fil
 ## Sprint 2 in full: Who changed prod?
 
 Servers: web01 (terminal) and gitbit (background, hosts bare repos over SSH). A `reference-transaction` hook in every repo writes its log and file list to `/var/lib/desk`, which the checks and the GitBit panel read. The shop repo's 2014 history is built by `scripts/build-darts-shop-repo.sh` and unpacked at start, because building it in the VM is slow.
+
+Blockers: DART-203 is blocked by DART-202 (find the commit before undoing it), DART-204 by DART-203 (don't push the wrong price), and DART-206 by DART-204 (GitBit must exist first).
 
 | Ticket | From | Points | Task | Check |
 | --- | --- | --- | --- | --- |

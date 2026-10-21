@@ -30,6 +30,8 @@ export interface Ticket {
 	points: number;
 	/** Arrives mid-sprint, once this many other tickets are done */
 	arrivesAfter?: number;
+	/** Can't be worked until these tickets are done, like a Jira "is blocked by" link */
+	blockedBy?: string[];
 	interruption?: boolean;
 	body: string[];
 	/** The "Stuck?" coach: steps, checked against the servers where possible */
