@@ -124,6 +124,7 @@ export const sprint2: Sprint = {
 			title: 'Put the price back, without losing history',
 			from: 'Derek',
 			points: 3,
+			blockedBy: ['DART-202'],
 			body: [
 				"Undo Tom's price change in ~/darts-shop. Priya says: do not rewrite history. Everyone must still be able to see what happened.",
 			],
@@ -190,6 +191,7 @@ export const sprint2: Sprint = {
 			title: 'Push the shop to GitBit',
 			from: 'Tom',
 			points: 3,
+			blockedBy: ['DART-203'],
 			body: [
 				'The shop repo only exists on web01. If web01 dies, so does the history.',
 				"I've made an empty repo for you on GitBit: darts-shop.git in your home folder on the gitbit server. Push the shop to it!",
@@ -255,6 +257,7 @@ export const sprint2: Sprint = {
 			title: 'Kev committed a password',
 			from: 'Priya',
 			points: 3,
+			blockedBy: ['DART-204'],
 			arrivesAfter: 4,
 			body: [
 				'Kev committed the shop database password to the darts-shop repo, in a file called .env. It is now on GitBit too.',

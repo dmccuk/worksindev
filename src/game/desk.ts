@@ -10,6 +10,8 @@ import type { CheckResult, Person, Ticket, VMs } from './types';
 import { GameVM } from './vm';
 
 const PASSWORD = 'Welcome1';
+const PADLOCK =
+	'<svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M4 7V5a4 4 0 0 1 8 0v2h1v8H3V7zm2 0h4V5a2 2 0 0 0-4 0z"/></svg>';
 // Accounts that already exist on the servers, or belong to the cast.
 const TAKEN = ['root', 'learner', 'sandra', 'kev', 'brant', 'derek', 'priya', 'tom', 'admin', 'nobody', 'sshd', 'daemon', 'bin', 'nginx', 'git'];
 
@@ -88,6 +90,7 @@ export function startDesk() {
 		return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
 	};
 
+	const blockers = (t: Ticket) => (t.blockedBy ?? []).filter((id) => !progress.done.includes(id));
 	const arrived = () =>
 		tickets.filter((t) => t.arrivesAfter === undefined || progress.done.filter((d) => d !== t.id).length >= t.arrivesAfter);
 
@@ -140,13 +143,23 @@ export function startDesk() {
 			$(`#count-${col}`).textContent = String(items.length);
 			for (const t of items) {
 				const li = el('li');
-				const b = el('button', `card${t.interruption ? ' interruption' : ''}${selected === t.id ? ' selected' : ''}`);
+				const blocked = progress.done.includes(t.id) ? [] : blockers(t);
+				const b = el(
+					'button',
+					`card${t.interruption ? ' interruption' : ''}${blocked.length ? ' blocked' : ''}${selected === t.id ? ' selected' : ''}`,
+				);
 				b.setAttribute('type', 'button');
 				b.append(el('span', 'card-id', t.id), el('span', 'card-title', t.title));
 				const meta = el('span', 'card-meta');
 				meta.append(el('span', '', `From ${t.from}`), el('span', 'points', String(t.points)));
 				b.append(meta);
 				if (t.interruption && !progress.done.includes(t.id)) b.append(el('span', 'flag', 'Interruption'));
+				if (blocked.length) {
+					const tag = el('span', 'blocked-by');
+					tag.innerHTML = PADLOCK;
+					tag.append(document.createTextNode(`Blocked by ${blocked.join(', ')}`));
+					b.append(tag);
+				}
 				b.addEventListener('click', () => openTicket(t.id));
 				li.append(b);
 				ul.append(li);
@@ -168,6 +181,7 @@ export function startDesk() {
 	const complete = (t: Ticket) => {
 		if (progress.done.includes(t.id)) return;
 		const before = arrived().length;
+		const waiting = arrived().filter((x) => !progress.done.includes(x.id) && blockers(x).length);
 		progress.done.push(t.id);
 		save();
 		say(t.from, t.thanks);
@@ -178,6 +192,9 @@ export function startDesk() {
 				say(n.from, `${n.title}. ${n.body[0]}`);
 				document.querySelector('[data-tab="panel-queue"]')?.classList.add('unread');
 			}, 1500);
+		}
+		for (const n of waiting.filter((x) => !blockers(x).length)) {
+			setTimeout(() => say(n.from, `${t.id} is done, so ${n.id} is unblocked. ${n.title}: over to you.`), 1500);
 		}
 		if (progress.done.length === tickets.length) void sayLater(sprint.done, 1500);
 	};
@@ -233,11 +250,25 @@ export function startDesk() {
 			return;
 		}
 		const done = progress.done.includes(t.id);
+		const blocked = done ? [] : blockers(t);
+		stuck.hidden ||= blocked.length > 0;
 		const head = el('div', 'ticket-head');
 		head.append(el('span', 'card-id', t.id), el('h3', 'ticket-title', t.title));
 		head.append(el('p', 'ticket-meta', `From ${t.from}. ${t.points} ${t.points === 1 ? 'point' : 'points'}.${done ? ' Done.' : ''}`));
 		pane.append(head);
 		for (const para of t.body) pane.append(el('p', '', para));
+
+		if (blocked.length) {
+			const note = el('div', 'blocked-note');
+			note.append(el('strong', '', 'Blocked. '));
+			note.append(
+				document.createTextNode(
+					`This ticket needs ${blocked.map((id) => `${id} (${tickets.find((x) => x.id === id)?.title ?? id})`).join(' and ')} done first. You can read it now, and work it once it's unblocked.`,
+				),
+			);
+			pane.append(note);
+			return;
+		}
 
 		const actions = el('div', 'actions');
 		if (!done) {
@@ -316,7 +347,7 @@ export function startDesk() {
 	const openTicket = (id: string) => {
 		selected = id;
 		const t = tickets.find((x) => x.id === id)!;
-		if (!progress.opened.includes(id)) {
+		if (!progress.opened.includes(id) && !blockers(t).length) {
 			progress.opened.push(id);
 			save();
 			if (!progress.done.includes(id)) say(t.from, t.opened);
