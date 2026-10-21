@@ -2,7 +2,7 @@
 
 A browser game that teaches real DevOps skills. It's 2014, you're the new operations hire at Darts Unlimited, and the developers keep throwing builds over the fence.
 
-Sister project of [learndevops.co.uk](https://dmccuk.github.io/learndevops/). The game design is in [docs/DESIGN.md](docs/DESIGN.md).
+The game design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **[Play it in your browser](https://dmccuk.github.io/worksindev/)**. Nothing to install, no account.
 
