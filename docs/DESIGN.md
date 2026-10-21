@@ -2,7 +2,7 @@
 
 A browser game that teaches real DevOps skills. You are a new junior operations engineer at Darts Unlimited, a fictional company, in 2014, at the height of the DevOps movement. Developers throw builds over the fence with a note saying "works in dev". Your job is to make them work in production, then fix the reasons they keep breaking, until the fence comes down.
 
-Sister project of [learndevops.co.uk](https://dmccuk.github.io/learndevops/): same skills, told as a story. When you finish the game, you "get a real job", which hands you on to the course.
+It stands on its own: the game links to no other course or site. It shares its in-browser Linux VM with the learndevops project, and may link to that course once it is finished.
 
 ## Rules that do not bend
 
