@@ -206,7 +206,28 @@ export function startDesk() {
 	// then shows the next one. Each press reveals one more step.
 	const coach = async () => {
 		const t = tickets.find((x) => x.id === selected);
-		if (!t || progress.done.includes(t.id)) return;
+		const box = document.querySelector('#coach');
+		if (!t || !box) return;
+		// Closed: every step, to look back on.
+		if (progress.done.includes(t.id)) {
+			revealed[t.id] = t.steps.length;
+			renderCoach(t);
+			box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+			return;
+		}
+		// Blocked: point at the ticket to do first.
+		const blocked = blockers(t);
+		if (blocked.length) {
+			box.replaceChildren(el('h4', '', 'Stuck? Do this one first'));
+			for (const id of blocked) {
+				const b = el('button', 'btn secondary', `Open ${id}: ${tickets.find((x) => x.id === id)?.title ?? id}`);
+				b.setAttribute('type', 'button');
+				b.addEventListener('click', () => openTicket(id));
+				box.append(b);
+			}
+			box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+			return;
+		}
 		const btn = $<HTMLButtonElement>('#stuck');
 		btn.disabled = true;
 		const states = await Promise.all(t.steps.map((s) => (s.done ? s.done(vms).catch(() => false) : null)));
@@ -225,7 +246,7 @@ export function startDesk() {
 		box.replaceChildren();
 		const shown = revealed[t.id] ?? 0;
 		if (!shown) return;
-		box.append(el('h4', '', 'Stuck? Here is what to do'));
+		box.append(el('h4', '', progress.done.includes(t.id) ? 'How this one was done' : 'Stuck? Here is what to do'));
 		const ol = el('ol', 'steps');
 		t.steps.slice(0, shown).forEach((s, i) => {
 			const done = states[i] === true;
@@ -247,14 +268,19 @@ export function startDesk() {
 		pane.replaceChildren();
 		const stuck = $<HTMLButtonElement>('#stuck');
 		const t = tickets.find((x) => x.id === selected);
-		stuck.hidden = !t || progress.done.includes(t.id);
+		stuck.hidden = !t;
+		const coachBox = () => {
+			const box = el('div', 'coach');
+			box.id = 'coach';
+			box.setAttribute('aria-live', 'polite');
+			return box;
+		};
 		if (!t) {
 			pane.append(el('p', 'empty', 'Pick a ticket from the queue to start work on it.'));
 			return;
 		}
 		const done = progress.done.includes(t.id);
 		const blocked = done ? [] : blockers(t);
-		stuck.hidden ||= blocked.length > 0;
 		const head = el('div', 'ticket-head');
 		head.append(el('span', 'card-id', t.id), el('h3', 'ticket-title', t.title));
 		head.append(el('p', 'ticket-meta', `From ${t.from}. ${t.points} ${t.points === 1 ? 'point' : 'points'}.${done ? ' Done.' : ''}`));
@@ -269,7 +295,7 @@ export function startDesk() {
 					`This ticket needs ${blocked.map((id) => `${id} (${tickets.find((x) => x.id === id)?.title ?? id})`).join(' and ')} done first. You can read it now, and work it once it's unblocked.`,
 				),
 			);
-			pane.append(note);
+			pane.append(note, coachBox());
 			return;
 		}
 
@@ -337,14 +363,8 @@ export function startDesk() {
 			out.textContent = last?.ok ? `Closed. ${last.message}` : 'Closed.';
 			out.className = 'result pass';
 		}
-		pane.append(out);
-		if (!done) {
-			const box = el('div', 'coach');
-			box.id = 'coach';
-			box.setAttribute('aria-live', 'polite');
-			pane.append(box);
-			renderCoach(t);
-		}
+		pane.append(out, coachBox());
+		renderCoach(t);
 	};
 
 	const openTicket = (id: string) => {
